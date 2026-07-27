@@ -1,0 +1,49 @@
+name: Build & publish Amelia Island Scene
+
+on:
+  schedule:
+    # GitHub cron is in UTC. These are ~7 AM and ~4 PM US Eastern.
+    - cron: "0 11 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch:        # lets you run it manually from the Actions tab
+  push:
+    branches: [ main ]
+
+# permissions needed to publish to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# don't let two runs overlap
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build the dashboard
+        run: python amelia_dashboard.py
+
+      - name: Upload the built page
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output
+
+      - name: Publish to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

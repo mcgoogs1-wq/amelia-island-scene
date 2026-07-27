@@ -1,0 +1,123 @@
+{
+  "location_name": "Amelia Island Scene",
+  "days_ahead": 7,
+  "output_file": "output/index.html",
+  "open_after_run": false,
+  "contact_email": "amelia-island-scene dashboard",
+  "publish": {
+    "enabled": true,
+    "provider": "netlify",
+    "site_name": "amelia-island-scene",
+    "netlify_token": "PUT-YOUR-NETLIFY-TOKEN-HERE"
+  },
+  "weather": {
+    "office": "JAX",
+    "gridX": 72,
+    "gridY": 80,
+    "lat": 30.6697,
+    "lon": -81.4626
+  },
+  "tides": {
+    "station": "8720030"
+  },
+  "news": {
+    "google_news": true,
+    "city_newsflash": true,
+    "days_back": 14,
+    "max_items": 14
+  },
+  "restaurants": {
+    "enabled": true,
+    "bbox": [
+      30.5,
+      -81.49,
+      30.73,
+      -81.43
+    ],
+    "amenities": [
+      "restaurant",
+      "cafe",
+      "fast_food"
+    ],
+    "exclude": [
+      "Amelia Island Paint",
+      "Pablo",
+      "Shrimp Festival",
+      "Jack & Diane",
+      "Jade Bistro",
+      "Island Kitchen",
+      "Captain Jack",
+      "Brett",
+      "Tony's New York",
+      "Le Clos",
+      "2nd Street Bistro",
+      "Kistmet",
+      "Sandy Bottom",
+      "Marina Seafood",
+      "McDonald",
+      "Burger King",
+      "Dunkin",
+      "Starbucks",
+      "Domino",
+      "DQ Grill",
+      "Firehouse",
+      "Jersey Mike",
+      "Subway",
+      "Taco Bell",
+      "Zaxby",
+      "Krystal",
+      "Barbaritos"
+    ],
+    "custom": [
+      { "name": "Patio on 5th & Ash", "cuisine": "American, Seafood", "street": "416 Ash Street", "url": "https://www.thepatiofernandinabeach.com" },
+      { "name": "Kitchen 251", "cuisine": "American", "street": "801 Beech Street", "url": "https://kitchen251.com" },
+      { "name": "Savannah Pizza Company", "cuisine": "Pizza", "street": "1925 South 14th Street", "url": "https://www.savannahspizzacompany.com" },
+      { "name": "Drunken Noodle", "cuisine": "Thai", "street": "510 South 8th Street", "url": "https://minidrunkennoodle.com" },
+      { "name": "Tasty's Fresh Burgers", "cuisine": "Burger", "street": "710 Centre Street" },
+      { "name": "Mezcal", "cuisine": "Mexican", "street": "302 Centre Street", "url": "https://mezcalai.com" },
+      { "name": "Curry Island Kitchen", "cuisine": "Indian", "street": "1120 South 14th Street", "url": "https://curryislandindiankitchen.com" },
+      { "name": "First Love Brewing", "cuisine": "Brewpub, Bar Food", "street": "22 South 8th Street", "url": "https://firstlovebrewing.com" },
+      { "name": "The Back Porch", "cuisine": "Southern, BBQ", "street": "960030 Gateway Boulevard", "url": "https://www.backporchamelia.com" },
+      { "name": "Twisted Table", "cuisine": "Breakfast & Brunch, Cocktails", "street": "300 Ash Street" },
+      { "name": "Garden Street Bistro", "cuisine": "Bistro, Brunch", "street": "105 South 3rd Street", "url": "https://gardenstreetbistro.com" },
+      { "name": "Amelia's Latin American Grill", "cuisine": "Latin American", "street": "320 South 8th Street" },
+      { "name": "Mocama Brewing Company", "cuisine": "Brewpub, Coffee, Pub Food", "street": "629 South 8th Street", "url": "https://mocama.com" },
+      { "name": "Pogo's Kitchen", "cuisine": "Southern", "street": "1408 Lewis Street", "url": "https://www.pogoskitchen.com" },
+      { "name": "Marché Burette", "cuisine": "Deli, French", "street": "87 Amelia Village Circle", "url": "https://www.omnihotels.com/hotels/amelia-island/dining/marche-burette-deli" },
+      { "name": "Coastal Pizza", "cuisine": "Pizza", "street": "1916 South 14th Street", "url": "https://www.gocoastalpizza.com" },
+      { "name": "Thai Spice Cafe", "cuisine": "Thai", "street": "1460 Sadler Road", "url": "https://thaispicecafe.com" },
+      { "name": "V Pizza", "cuisine": "Pizza, Italian", "street": "2709 Sadler Road", "url": "https://www.vpizza.com/locations/fernandina-beach-fl/" },
+      { "name": "Indigo", "cuisine": "Southern", "street": "20 South 2nd Street", "url": "https://indigofernandina.com" },
+      { "name": "The Boat House", "cuisine": "Seafood, American", "street": "30 South 2nd Street", "url": "https://theboathousefernandina.com" },
+      { "name": "Meal Ease Market", "cuisine": "Prepared Meals, Carryout", "street": "1421 South 10th Street", "url": "https://mealeasemarket.com" },
+      { "name": "1928 Cuban Bistro", "cuisine": "Cuban", "street": "122 South 8th Street", "url": "https://www.1928bistro.com" },
+      { "name": "Scully's Irish Pub", "cuisine": "Irish, Pub Food", "street": "14 South 2nd Street", "url": "https://www.scullysirishpub.com" },
+      { "name": "Hola! Cuban Cafe", "cuisine": "Cuban", "street": "31 South 5th Street", "url": "https://www.holacubancafe.com" },
+      { "name": "Nana Teresa's Bake Shop", "cuisine": "Café, Bakery", "street": "13 North 3rd Street", "url": "https://nanateresa.com" },
+      { "name": "Thirteen", "cuisine": "Bakery, Desserts", "street": "121 South 9th Street (Beech Street Shoppes)" },
+      { "name": "A Will and A Whisk Bakery", "cuisine": "Bakery, Desserts", "street": "1853 South 8th Street", "url": "https://www.awillandawhiskbakery.com" },
+      { "name": "The Principal's Office Bar", "cuisine": "Cocktail Bar", "street": "914 Atlantic Avenue", "url": "https://www.theprincipalsofficebar.com" },
+      { "name": "Kismet Coffee", "cuisine": "Coffee", "street": "5517 South Fletcher Avenue", "url": "https://kismetcoffeefl.com" },
+      { "name": "Magnolia's Cafe", "cuisine": "Breakfast & Lunch, Café", "street": "1480 Sadler Road", "url": "https://magnoliascafe.co" },
+      { "name": "Tortuga Jack's", "cuisine": "Breakfast & Brunch", "street": "1999 North Fletcher Avenue" },
+      { "name": "Ms. Carolyn's Breakfast", "cuisine": "Breakfast & Brunch", "street": "2120 Sadler Road" },
+      { "name": "Lagniappe", "cuisine": "Creole, Southern", "street": "4810 First Coast Highway", "url": "https://lagniappeamelia.com" },
+      { "name": "Bantam & Biddy", "cuisine": "Breakfast & Lunch, Southern", "street": "4802 First Coast Highway", "url": "https://www.bantamandbiddy.com" },
+      { "name": "Bar Zin", "cuisine": "New American, Wine Bar", "street": "4924 First Coast Highway", "url": "https://www.barzin-bistro-winebar.com" },
+      { "name": "Locals", "cuisine": "Cocktail Bar", "street": "869 Sadler Road" },
+      { "name": "The Decantery", "cuisine": "Wine Bar", "street": "117 Centre Street", "url": "http://www.thedecantery.com" },
+      { "name": "KP's Restaurant", "cuisine": "American, Comfort Food", "street": "5472 First Coast Highway" },
+      { "name": "Sandbar", "cuisine": "Bar & Grill, Seafood", "street": "2910 Atlantic Avenue", "url": "https://sandbarameliaisland.com" },
+      { "name": "Hammerhead Beach Bar", "cuisine": "Bar & Grill", "street": "2045 South Fletcher Avenue" },
+      { "name": "Wicked Bao Restaurant", "cuisine": "Asian Fusion", "street": "North 2nd Street" },
+      { "name": "Hana Sushi", "cuisine": "Sushi, Japanese", "street": "1930 South 14th Street", "url": "https://www.hanasushifl.com" },
+      { "name": "Georgia Smoke", "cuisine": "Barbecue", "street": "820 Sadler Road", "url": "https://gasmokebbq.com" },
+      { "name": "The Inkwell Art Bar", "cuisine": "Bar, Live Music", "street": "1925 South 14th Street", "url": "https://www.theinkwellamelia.com" },
+      { "name": "Golf Pub Social", "cuisine": "Bar & Grill, American", "street": "1531 Sadler Road", "url": "https://golfpubsocial.com" }
+    ]
+  },
+  "sources": {
+    "fernandina_connect": true,
+    "allevents": true
+  }
+}

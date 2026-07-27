@@ -1,0 +1,10 @@
+# local-only stuff — not needed in the cloud
+.venv/
+logs/
+output/
+__pycache__/
+*.pyc
+.DS_Store
+
+# per-machine Netlify site record (the cloud uses a repo secret instead)
+data/netlify_site.json
