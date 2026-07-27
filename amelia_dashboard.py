@@ -1716,10 +1716,15 @@ def _render_restaurants(items: list[dict]) -> str:
         tag_html = f'<span class="rtag">{esc(tag)}</span>' if tag else ""
         meta = (f'<div class="rmeta">{esc(r["street"])}</div>'
                 if r.get("street") else "")
+        yelp = ("https://www.yelp.com/search?find_desc="
+                + quote_plus(r["name"]) + "&find_loc="
+                + quote_plus("Fernandina Beach, FL"))
         cards.append(
-            f'<a class="rcard" data-cats="{esc(" ".join(cats))}" '
-            f'href="{esc(r["url"])}" target="_blank" rel="noopener">'
-            f'<div class="rname">{esc(r["name"])}</div>{tag_html}{meta}</a>')
+            f'<div class="rcard" data-cats="{esc(" ".join(cats))}">'
+            f'<a class="rname" href="{esc(r["url"])}" target="_blank" '
+            f'rel="noopener">{esc(r["name"])}</a>{tag_html}{meta}'
+            f'<a class="ryelp" href="{esc(yelp)}" target="_blank" '
+            f'rel="noopener">Yelp ↗</a></div>')
 
     total = len(items)
     chips = [f'<button class="rf active" data-cat="all">All ({total})</button>']
@@ -1930,18 +1935,23 @@ _CSS = """
   .rf:hover{ border-color:var(--accent); color:var(--accent); }
   .rf.active{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .rgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:11px; }
-  .rcard{ display:block; border:1px solid var(--line); border-radius:14px; padding:11px 14px;
-    text-decoration:none; transition:transform .12s, box-shadow .12s, border-color .12s;
+  .rcard{ display:flex; flex-direction:column; align-items:flex-start;
+    border:1px solid var(--line); border-radius:14px; padding:11px 14px;
+    transition:transform .12s, box-shadow .12s, border-color .12s;
     background:linear-gradient(160deg, color-mix(in srgb,var(--accent) 9%, var(--card)), var(--card)); }
   .rcard:hover{ transform:translateY(-2px); box-shadow:var(--shadow);
     border-color:color-mix(in srgb,var(--accent) 45%, var(--line)); }
-  .rname{ font-weight:800; color:var(--ink); line-height:1.25; }
-  .rcard:hover .rname{ color:var(--accent); }
+  .rname{ font-weight:800; color:var(--ink); line-height:1.25; text-decoration:none; }
+  .rname:hover{ color:var(--accent); text-decoration:underline; }
   .rtag{ display:inline-block; margin-top:6px; font-family:"Fredoka",sans-serif; font-size:.62rem;
     text-transform:uppercase; letter-spacing:.04em; font-weight:600;
     background:color-mix(in srgb,var(--accent) 14%, transparent); color:var(--accent);
     padding:2px 9px; border-radius:999px; }
   .rmeta{ color:var(--muted); font-size:.78rem; font-weight:700; margin-top:5px; }
+  .ryelp{ margin-top:9px; font-size:.72rem; font-weight:800; color:var(--accent);
+    text-decoration:none; border:1px solid color-mix(in srgb,var(--accent) 35%, transparent);
+    padding:2px 10px; border-radius:999px; }
+  .ryelp:hover{ background:color-mix(in srgb,var(--accent) 14%, transparent); }
 
   .muted{ color:var(--muted); font-weight:700; }
   @media (min-width:760px){
