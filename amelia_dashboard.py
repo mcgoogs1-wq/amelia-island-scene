@@ -1627,33 +1627,87 @@ def render_html(cfg: dict, data: dict) -> str:
                   else '<p class="muted">Tide predictions unavailable.</p>')
 
     shows = len(data["music"])
+
+    def _panel(key: str, inner: str) -> str:
+        return f'<div class="panel" data-panel="{key}">{inner}</div>'
+
+    # Tab bar. "weather" is the default view; "all" shows every panel stacked
+    # (the original long-scroll view).
+    tabs_def = [
+        ("weather", "🌤️", "Weather &amp; Tides"),
+        ("music", "🎶", "Live Music"),
+        ("events", "📅", "Events"),
+        ("eats", "🍽️", "Bars &amp; Restaurants"),
+        ("news", "📰", "News"),
+        ("learn", "📜", "Island &amp; Sea"),
+        ("all", "🗂️", "Everything"),
+    ]
+    tabbar = '<nav class="tabbar">' + "".join(
+        f'<button class="tabbtn{" active" if key == "weather" else ""}" '
+        f'data-tab="{key}"><span class="tabico">{ico}</span>{label}</button>'
+        for key, ico, label in tabs_def) + '</nav>'
+
     body = (
         _banner_html(data.get("banners", []))
-        + '<div class="cols2">'
-        + _section("#f4a11a", "☀️", "Weather", weather_html)
-        + _section("#048ba8", "🌊", "Tides", tides_html,
-                   lead="High &amp; low tides · Fernandina Beach")
-        + '</div>'
-        + _section("#2f8fd4", "🎶", "Live Music This Week", music_html,
-                   lead=f"{shows} shows over the next {days} days across "
-                        f"local venues 🎉", extra="hero")
-        + _section("#9b5de5", "📅", "Other Events This Week", events_html)
-        + _section("#00a6fb", "📰", "Local News", news_html,
-                   lead="Fresh Amelia Island &amp; Fernandina Beach headlines.")
-        + '<div class="cols2">'
-        + _section("#b07d3f", "📜", "Island History",
-                   _fact_html(_daily_pick_fact(data["facts"]["history"])),
-                   lead="A local history nugget, refreshed daily.")
-        + _section("#1fbfa9", "🐚", "Florida Marine Life",
-                   _fact_html(_daily_pick_fact(data["facts"]["marine"])),
-                   lead="Fish, mammals, birds, invertebrates &amp; plants — a new one daily.")
-        + '</div>'
-        + _section("#2f6f9e", "🍽️", "Bars and Restaurants",
-                   restaurants_html,
-                   lead="Every bar and restaurant on the island — tap a card "
-                        "for details, or filter by type below.")
+        + tabbar
+        + _panel("weather",
+                 '<div class="cols2">'
+                 + _section("#f4a11a", "☀️", "Weather", weather_html)
+                 + _section("#048ba8", "🌊", "Tides", tides_html,
+                            lead="High &amp; low tides · Fernandina Beach")
+                 + '</div>')
+        + _panel("music",
+                 _section("#2f8fd4", "🎶", "Live Music This Week", music_html,
+                          lead=f"{shows} shows over the next {days} days across "
+                               f"local venues 🎉", extra="hero"))
+        + _panel("events",
+                 _section("#9b5de5", "📅", "Other Events This Week", events_html))
+        + _panel("news",
+                 _section("#00a6fb", "📰", "Local News", news_html,
+                          lead="Fresh Amelia Island &amp; Fernandina Beach headlines."))
+        + _panel("learn",
+                 '<div class="cols2">'
+                 + _section("#b07d3f", "📜", "Island History",
+                            _fact_html(_daily_pick_fact(data["facts"]["history"])),
+                            lead="A local history nugget, refreshed daily.")
+                 + _section("#1fbfa9", "🐚", "Florida Marine Life",
+                            _fact_html(_daily_pick_fact(data["facts"]["marine"])),
+                            lead="Fish, mammals, birds, invertebrates &amp; plants "
+                                 "— a new one daily.")
+                 + '</div>')
+        + _panel("eats",
+                 _section("#2f6f9e", "🍽️", "Bars and Restaurants", restaurants_html,
+                          lead="Every bar and restaurant on the island — tap a card "
+                               "for details, or filter by type below."))
+        + _TABS_JS
     )
     return _html_page(loc, esc(generated), strip_html, body)
+
+
+_TABS_JS = """<script>
+(function(){
+  var btns=[].slice.call(document.querySelectorAll('.tabbtn'));
+  var panels=[].slice.call(document.querySelectorAll('.panel'));
+  if(!btns.length||!panels.length) return;
+  function show(key, scroll){
+    panels.forEach(function(p){
+      var on=(key==='all')||(p.getAttribute('data-panel')===key);
+      p.style.display=on?'':'none';
+    });
+    btns.forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-tab')===key);
+    });
+    try{ history.replaceState(null,'','#'+key); }catch(e){}
+    if(scroll) window.scrollTo({top:0,behavior:'smooth'});
+  }
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){ show(b.getAttribute('data-tab'), true); });
+  });
+  var want=(location.hash||'').replace('#','');
+  var ok=btns.some(function(b){ return b.getAttribute('data-tab')===want; });
+  show(ok?want:'weather', false);
+})();
+</script>"""
 
 
 # broad cuisine buckets for the filter chips: (label, slug, matching keywords)
@@ -1817,7 +1871,24 @@ _CSS = """
     background:linear-gradient(160deg,var(--bg1),var(--bg2)); background-attachment:fixed;
     font-family:"Nunito",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     font-size:17px; line-height:1.55; -webkit-font-smoothing:antialiased; }
-  .wrap{ max-width:940px; margin:0 auto; padding:20px 16px 72px; }
+  .wrap{ max-width:1440px; margin:0 auto; padding:20px 24px 72px; }
+  @media (max-width:640px){ .wrap{ padding:16px 14px 60px; } }
+
+  .tabbar{ position:sticky; top:0; z-index:30; margin:18px 0 2px; padding:10px 12px;
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+    background:color-mix(in srgb, var(--card) 86%, transparent);
+    -webkit-backdrop-filter:saturate(150%) blur(10px);
+    backdrop-filter:saturate(150%) blur(10px);
+    border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); }
+  .tabbtn{ font-family:"Fredoka",sans-serif; font-weight:600; font-size:.88rem;
+    cursor:pointer; border:1px solid var(--line); background:var(--card);
+    color:var(--muted); padding:7px 15px; border-radius:999px;
+    display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+    transition:background .12s, color .12s, border-color .12s; }
+  .tabbtn:hover{ color:var(--ink); border-color:#2f8fd4; }
+  .tabbtn.active{ background:#17475a; border-color:#17475a; color:#fff; }
+  .tabico{ font-size:1.1em; line-height:1; }
+  @media (max-width:640px){ .tabbtn{ font-size:.8rem; padding:6px 11px; } }
 
   header.top{ position:relative; border-radius:22px; overflow:hidden; color:#fff;
     background:linear-gradient(135deg,#0e2633 0%,#17475a 60%,#1d5866 100%);
@@ -1840,7 +1911,8 @@ _CSS = """
 
   .hero-banner{ position:relative; margin-top:16px; border-radius:20px; overflow:hidden;
     box-shadow:var(--shadow); border:1px solid var(--line); background:var(--line); }
-  .hero-banner img{ display:block; width:100%; height:240px; object-fit:cover; }
+  .hero-banner img{ display:block; width:100%; height:300px; object-fit:cover; }
+  @media (max-width:900px){ .hero-banner img{ height:230px; } }
   .bcap{ position:absolute; right:10px; bottom:9px; background:rgba(0,0,0,.5); color:#fff;
     font-size:.72rem; font-weight:700; padding:4px 10px; border-radius:999px;
     text-decoration:none; }
@@ -1920,7 +1992,7 @@ _CSS = """
     border:1px solid var(--line); background:var(--line); margin:2px 14px 8px 0; }
   .factttl{ font-family:"Fredoka",sans-serif; font-weight:600; font-size:1.05rem;
     color:var(--accent); margin-bottom:5px; }
-  .facttxt{ margin:0; font-size:.95rem; line-height:1.6; }
+  .facttxt{ margin:0; font-size:.95rem; line-height:1.6; max-width:78ch; }
   @media (max-width:520px){ .factimg{ width:92px; height:92px; margin:2px 12px 6px 0; } }
   .factsrc{ display:inline-block; margin-top:9px; font-size:.76rem; font-weight:800;
     color:var(--accent); text-decoration:none; opacity:.85; }
