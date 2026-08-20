@@ -8,3 +8,6 @@ __pycache__/
 
 # per-machine Netlify site record (the cloud uses a repo secret instead)
 data/netlify_site.json
+
+# GitHub Desktop clone of the published repo (not part of this project)
+amelia-island-scene/
