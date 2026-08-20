@@ -94,7 +94,9 @@ DEFAULT_CONFIG = {
             "Amelia Island", "Fernandina Beach, Florida",
             "Nassau County, Florida", "Fort Clinch", "Fort Clinch State Park",
             "Amelia Island Light", "American Beach, Florida",
-            "Amelia Island State Park",
+            "Amelia Island State Park", "Fernandina Beach Historic District",
+            "Amelia Island Museum of History", "Isle of Eight Flags Shrimp Festival",
+            "St. Marys River (Florida–Georgia)", "Sea Islands",
         ],
         # broader people/events — pull the WHOLE article but keep only passages
         # that actually mention the area (see region_terms)
@@ -103,6 +105,9 @@ DEFAULT_CONFIG = {
             "Spanish Florida", "History of Florida", "Kingsley Plantation",
             "Fort Caroline", "Cumberland Island", "MaVynee Betsch",
             "Florida Railroad", "Republic of the Floridas",
+            "Zephaniah Kingsley", "Seminole Wars", "James Oglethorpe",
+            "Princess Amelia of Great Britain", "Pedro Menéndez de Avilés",
+            "Fort George Island", "Talbot Islands",
         ],
         "region_terms": [
             "amelia", "fernandina", "nassau county", "fort clinch",
@@ -141,11 +146,24 @@ DEFAULT_CONFIG = {
         # Commons image search (landscape-oriented, filtered for scenery).
         "enabled": True,
         "refresh_days": 7,
+        "per_source_cap": 14,
+        # Wikimedia Commons categories — the richest source of local scenery
+        "categories": [
+            "Amelia Island", "Amelia Island Light", "Amelia Island State Park",
+            "American Beach, Florida", "Fort Clinch State Park",
+            "Fernandina Beach, Florida", "Beaches of Nassau County, Florida",
+            "Arecaceae in Nassau County, Florida",
+        ],
         "queries": [
             "Fort Clinch State Park", "Amelia Island State Park",
             "Amelia Island beach", "Fernandina Beach beach",
             "Amelia Island ocean", "Amelia Island marsh",
             "Amelia Island dunes", "Amelia Island Florida nature",
+            "Amelia Island sunset", "Amelia Island sunrise",
+            "Egans Creek Greenway", "Amelia Island salt marsh",
+            "Fernandina Beach pier", "Amelia River Florida",
+            "Amelia Island live oak", "Fernandina Beach shoreline",
+            "Nassau County Florida marsh", "Amelia Island maritime forest",
         ],
         "exclude": [
             "map", "diagram", "logo", "seal", "flag", "icon", "plaque", "chart",
@@ -157,6 +175,20 @@ DEFAULT_CONFIG = {
             "aircraft", "airplane", "aviation", "earhart", "lockheed", "vega",
             "mill", "smurfit", "westrock", "hospital", "hotel", "resort",
             "golf", "stadium", "parking", "fire ", "high school",
+            "postcard", "illustration", "engraving", "lithograph", "drawing",
+            "sketch", "print of", "wv banner", "ferrari", "maserati", "lancia",
+            "porsche", "concours", "automobile", " car ", "motel", "flagpole",
+            "courthouse", "cemetery", "grave", "headstone", "logo", "sticker",
+            # military / wrong-place / documents that slipped in via categories
+            "navy", "airship", "helicopter", "dvidshub", "replenishment",
+            "census", "snap ", "enumeration", "aerial", "index to", "fiord",
+            "glacial", "icecap", "pangnirtung", "invasion", "marker",
+            # civic & built environment (we want nature and scenery)
+            "city hall", "animal services", "post office", "customs", "church",
+            "academy", "recreation center", "boat ramp", "railroad", "crossing",
+            "city limits", "farmers market", "hippie", "tent", "house", "cafe",
+            "panoramio", "sago palm", "dennis collect", "centre st",
+            "looking east", "oldest bar", " vc0", "vc name", "visitor",
         ],
     },
     "sources": {
@@ -1231,29 +1263,85 @@ def _daily_pick_fact(items: list) -> dict:
 
 # --- rotating landscape banner (Wikimedia Commons image search) --------------
 
-def _commons_images(query: str, ua: str, exclude: list[str], limit: int = 15) -> list[dict]:
+def _commons_keep(pg: dict, exclude: list[str]) -> dict | None:
+    """Keep only wide, sizable photos whose filename isn't obviously non-scenic."""
+    ii = (pg.get("imageinfo") or [None])[0]
+    if not ii or ii.get("mime") not in ("image/jpeg", "image/png"):
+        return None
+    w, h = ii.get("width", 0), ii.get("height", 0)
+    if not (w and h and w >= h * 1.25 and w >= 1200):
+        return None
+    title = pg.get("title", "")
+    if any(b in title.lower() for b in exclude):
+        return None
+    url = ii.get("thumburl") or ii.get("url")
+    if not url:
+        return None
+    return {"url": url, "descurl": ii.get("descriptionurl"),
+            "title": title.replace("File:", "").rsplit(".", 1)[0]}
+
+
+def _commons_get(params: dict, ua: str) -> dict:
+    """GET from Commons, pacing and backing off when rate-limited (429)."""
+    for attempt in range(4):
+        try:
+            r = requests.get("https://commons.wikimedia.org/w/api.php",
+                             params=params, headers={"User-Agent": ua}, timeout=30)
+            if r.status_code == 429:
+                time.sleep(2 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            data = r.json()
+            time.sleep(0.35)  # be polite between calls
+            return data
+        except Exception:  # noqa: BLE001
+            if attempt == 3:
+                raise
+            time.sleep(1.5 * (attempt + 1))
+    return {}
+
+
+def _commons_images(query: str, ua: str, exclude: list[str], limit: int = 20) -> list[dict]:
+    """Photos from a Commons text search."""
     params = {
         "action": "query", "format": "json", "formatversion": 2,
         "generator": "search", "gsrsearch": f"{query} filetype:bitmap",
         "gsrnamespace": 6, "gsrlimit": limit, "prop": "imageinfo",
-        "iiprop": "url|size|mime", "iiurlwidth": 1400,
+        "iiprop": "url|size|mime", "iiurlwidth": 1600,
     }
-    r = requests.get("https://commons.wikimedia.org/w/api.php", params=params,
-                     headers={"User-Agent": ua}, timeout=30)
-    r.raise_for_status()
     out = []
-    for pg in r.json().get("query", {}).get("pages", []):
-        ii = (pg.get("imageinfo") or [None])[0]
-        if not ii or ii.get("mime") not in ("image/jpeg", "image/png"):
-            continue
-        w, h = ii.get("width", 0), ii.get("height", 0)
-        if not (w and h and w >= h * 1.3 and w >= 1200):  # landscape, sizable
-            continue
-        if any(b in pg.get("title", "").lower() for b in exclude):
-            continue
-        url = ii.get("thumburl") or ii.get("url")
-        if url:
-            out.append({"url": url, "descurl": ii.get("descriptionurl")})
+    for pg in _commons_get(params, ua).get("query", {}).get("pages", []):
+        keep = _commons_keep(pg, exclude)
+        if keep:
+            out.append(keep)
+    return out
+
+
+def _commons_category_images(category: str, ua: str, exclude: list[str],
+                             cap: int = 120) -> list[dict]:
+    """Photos from a Commons category (much richer than search)."""
+    out, cont, pages_left = [], None, 4
+    while pages_left > 0:
+        pages_left -= 1
+        params = {
+            "action": "query", "format": "json", "formatversion": 2,
+            "generator": "categorymembers", "gcmtitle": f"Category:{category}",
+            "gcmtype": "file", "gcmlimit": 100, "prop": "imageinfo",
+            "iiprop": "url|size|mime", "iiurlwidth": 1600,
+        }
+        if cont:
+            params["gcmcontinue"] = cont
+        try:
+            data = _commons_get(params, ua)
+        except Exception:  # noqa: BLE001
+            break
+        for pg in data.get("query", {}).get("pages", []):
+            keep = _commons_keep(pg, exclude)
+            if keep:
+                out.append(keep)
+        cont = (data.get("continue") or {}).get("gcmcontinue")
+        if not cont or len(out) >= cap:
+            break
     return out
 
 
@@ -1284,11 +1372,12 @@ def fetch_banners(cfg: dict) -> list[dict]:
     ua = f"AmeliaDashboard/1.0 ({cfg.get('contact_email','')})"
     exclude = [e.lower() for e in bc.get("exclude", [])]
     try:
-        cap = bc.get("per_query_cap", 6)
+        cap = bc.get("per_source_cap", 14)
         seen, imgs = set(), []
-        for q in bc.get("queries", []):
+
+        def _collect(items):
             added = 0
-            for im in _commons_images(q, ua, exclude):
+            for im in items:
                 if im["url"] in seen:
                     continue
                 seen.add(im["url"])
@@ -1296,6 +1385,18 @@ def fetch_banners(cfg: dict) -> list[dict]:
                 added += 1
                 if added >= cap:
                     break
+
+        # categories first (richest source), then keyword searches to top up
+        for c in bc.get("categories", []):
+            try:
+                _collect(_commons_category_images(c, ua, exclude))
+            except Exception as ex:  # noqa: BLE001
+                logging.warning("Banner category %s failed: %s", c, ex)
+        for q in bc.get("queries", []):
+            try:
+                _collect(_commons_images(q, ua, exclude))
+            except Exception as ex:  # noqa: BLE001
+                logging.warning("Banner query %s failed: %s", q, ex)
         if imgs:
             cache.write_text(json.dumps(
                 {"built": now_local().date().isoformat(), "images": imgs}))
@@ -1311,8 +1412,10 @@ def _banner_html(images: list[dict]) -> str:
     if not images:
         return ""
     b = _daily_pick(images)
+    name = re.sub(r"[_-]+", " ", b.get("title") or "").strip()
+    name = re.sub(r"\s*\(\d+\)\s*$", "", name)[:70] or "Amelia Island"
     cap = (f'<a class="bcap" href="{esc(b["descurl"])}" target="_blank" '
-           f'rel="noopener">📷 Amelia Island · Wikimedia Commons</a>'
+           f'rel="noopener">📷 {esc(name)} · Wikimedia Commons</a>'
            if b.get("descurl") else "")
     return (f'<div class="hero-banner"><img src="{esc(b["url"])}" '
             f'alt="Amelia Island landscape" loading="lazy">{cap}</div>')
@@ -1345,6 +1448,31 @@ def _protect_abbr(t: str) -> str:
     return t
 
 
+# Wikipedia sections that are boilerplate or too dry/technical for a daily read
+_SKIP_SECTIONS = {
+    "references", "external links", "see also", "further reading", "notes",
+    "bibliography", "citations", "sources", "gallery", "footnotes",
+    "explanatory notes", "works cited", "taxonomy", "systematics",
+    "phylogeny", "subspecies", "genetics", "cladogram", "demographics",
+    "climate data", "government", "education", "infrastructure",
+    "transportation", "media", "sister cities", "notable people",
+    "notable residents", "politics", "elections", "sports teams",
+}
+
+
+def _useful_sections(text: str) -> str:
+    """Keep the intro plus the readable sections; drop boilerplate/dry ones."""
+    parts = re.split(r"\n=+\s*([^=\n]+?)\s*=+\n", "\n" + text)
+    kept = [parts[0]]
+    for i in range(1, len(parts), 2):
+        name = parts[i].strip().lower()
+        body = parts[i + 1] if i + 1 < len(parts) else ""
+        if name in _SKIP_SECTIONS:
+            continue
+        kept.append(body)
+    return "\n".join(kept)
+
+
 def _clean_text(text: str) -> str:
     text = re.sub(r"\([^)]*[/ˈːˌ][^)]*\)", "", text)  # IPA parentheticals
     text = re.sub(r"\((?:listen|pronounced|born|US|UK)[^)]*\)", "", text, flags=re.I)
@@ -1368,8 +1496,8 @@ def _split_sentences(text: str) -> list[str]:
     return out
 
 
-def _passages_from_extract(text: str, target: int = 430, hardmax: int = 660) -> list[str]:
-    """Group sentences into short multi-sentence passages for richer facts."""
+def _passages_from_extract(text: str, target: int = 950, hardmax: int = 1350) -> list[str]:
+    """Group sentences into multi-sentence passages for richer, detailed facts."""
     passages, cur = [], ""
     for s in _split_sentences(text):
         if not cur:
@@ -1401,31 +1529,74 @@ def _wiki_extracts(titles: list[str], ua: str, intro: bool = True) -> dict:
         }
         if intro:
             params["exintro"] = 1
-        r = requests.get("https://en.wikipedia.org/w/api.php", params=params,
-                         headers={"User-Agent": ua}, timeout=30)
-        r.raise_for_status()
-        for pg in r.json().get("query", {}).get("pages", []):
+        # Wikipedia rate-limits bursts; pace the calls and back off on 429.
+        pages = None
+        for attempt in range(4):
+            try:
+                r = requests.get("https://en.wikipedia.org/w/api.php",
+                                 params=params, headers={"User-Agent": ua},
+                                 timeout=30)
+                if r.status_code == 429:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                r.raise_for_status()
+                pages = r.json().get("query", {}).get("pages", [])
+                break
+            except Exception as ex:  # noqa: BLE001
+                if attempt == 3:
+                    logging.warning("Wikipedia fetch failed for %s: %s",
+                                    titles[i:i + step], ex)
+                time.sleep(1.5 * (attempt + 1))
+        if pages is None:
+            continue
+        if not intro:
+            time.sleep(0.35)  # be polite between full-article fetches
+        for pg in pages:
             if not pg.get("missing") and pg.get("extract"):
+                text = pg["extract"] if intro else _useful_sections(pg["extract"])
                 out[pg["title"]] = {
-                    "extract": pg["extract"],
+                    "extract": text,
                     "image": (pg.get("thumbnail") or {}).get("source"),
                 }
     return out
 
 
-def _build_facts(titles: list[str], ua: str, intro: bool = True,
-                 region_terms: list[str] = None, seen: set = None) -> list[dict]:
+# passages thick with technical jargon read poorly in a daily "did you know"
+_JARGON = ("et al", "hydraulic", "sediment accretion", "suspended sediment",
+           "phylogenetic", "clade", "taxon", "morphometric", "allele",
+           "mitochondrial", "sensu ", "nomenclature", "holotype", "µ", "μ")
+
+
+def _too_technical(s: str) -> bool:
+    low = s.lower()
+    if sum(1 for j in _JARGON if j in low) >= 2:
+        return True
+    digits = sum(c.isdigit() for c in s)
+    return digits > len(s) * 0.08  # mostly measurements/stats
+
+
+def _build_facts(titles: list[str], ua: str, intro: bool = False,
+                 region_terms: list[str] = None, seen: set = None,
+                 per_article: int = 8) -> list[dict]:
+    """Passages are taken from the start of each article (intro and the early
+    sections), which read best; per_article caps how deep we go."""
     seen = seen if seen is not None else set()
     facts = []
     for title, info in _wiki_extracts(titles, ua, intro=intro).items():
         url = "https://en.wikipedia.org/wiki/" + quote(title.replace(" ", "_"))
+        kept = 0
         for s in _passages_from_extract(info["extract"]):
+            if kept >= per_article:
+                break
             if region_terms and not any(t in s.lower() for t in region_terms):
+                continue
+            if _too_technical(s):
                 continue
             k = s[:60].lower()
             if k in seen:
                 continue
             seen.add(k)
+            kept += 1
             facts.append({"title": title, "text": s,
                           "image": info.get("image"), "url": url})
     return facts
@@ -1444,7 +1615,7 @@ def _build_context_facts(titles: list[str], ua: str, region_terms: list[str],
         if not lead.endswith((".", "!", "?")):
             lead += "."
         url = "https://en.wikipedia.org/wiki/" + quote(title.replace(" ", "_"))
-        for p in _passages_from_extract(info["extract"], target=300, hardmax=470):
+        for p in _passages_from_extract(info["extract"], target=700, hardmax=1050):
             if not any(t in p.lower() for t in region_terms):
                 continue
             text = p if lead.lower() in p.lower() else f"{lead} {p}"
