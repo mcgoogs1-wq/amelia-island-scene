@@ -1,72 +1,71 @@
-# Putting Amelia Island Scene on your own domain
+# Putting Amelia Island Scene on ameliacurrent.com
 
-Below, replace **YOURDOMAIN.com** with the domain you bought. The site keeps
-running on GitHub exactly as it does now. You're just giving it a nicer
-address. Your old `mcgoogs1-wq.github.io/amelia-island-scene` link will
-automatically forward to the new one, so anything you've already shared keeps
-working.
+The site keeps running on GitHub exactly as it does now. Cloudflare just
+points the name **ameliacurrent.com** at it. Once it's switched over, the old
+`mcgoogs1-wq.github.io/amelia-island-scene` link forwards to the new address,
+so anything already shared keeps working.
 
 ---
 
-## 1. Add the DNS records at your registrar (~5 min)
+## 1. Add the DNS records in Cloudflare (~5 min)
 
-Log in where you bought the domain and find **DNS** (it may be called "DNS
-Records", "Manage DNS", "Advanced DNS", or "DNS Zone").
+1. Go to **dash.cloudflare.com** and click **ameliacurrent.com**.
+2. In the left sidebar, open **DNS → Records**.
+3. If any records already exist with the name `ameliacurrent.com` (or `@`) or
+   `www`, delete them. Leave any MX or TXT records alone.
+4. Click **Add record** once for each row below.
 
-**First, delete any records the registrar added for you** on `@` or `www`.
-These are usually a "parked" or "coming soon" page, or a "forwarding/redirect"
-rule. They will conflict with GitHub. Leave any MX or TXT records alone; those
-are for email.
+| Type | Name | IPv4 / IPv6 address, or Target | Proxy status |
+|---|---|---|---|
+| A | `@` | `185.199.108.153` | **DNS only** |
+| A | `@` | `185.199.109.153` | **DNS only** |
+| A | `@` | `185.199.110.153` | **DNS only** |
+| A | `@` | `185.199.111.153` | **DNS only** |
+| AAAA | `@` | `2606:50c0:8000::153` | **DNS only** |
+| AAAA | `@` | `2606:50c0:8001::153` | **DNS only** |
+| AAAA | `@` | `2606:50c0:8002::153` | **DNS only** |
+| AAAA | `@` | `2606:50c0:8003::153` | **DNS only** |
+| CNAME | `www` | `mcgoogs1-wq.github.io` | **DNS only** |
 
-Then add these records:
+> ⚠️ **The one thing that matters most:** Cloudflare turns the orange
+> **Proxied** cloud ON by default for every new record. Click the toggle so
+> the cloud turns **grey ("DNS only")** before you save each one. If it stays
+> orange, GitHub can't confirm the domain or issue the HTTPS certificate.
+>
+> Cloudflare may warn that a DNS-only record "exposes the IP address." Ignore
+> that; those are GitHub's public addresses, not yours.
 
-| Type | Host / Name | Value / Points to |
-|---|---|---|
-| A | `@` | `185.199.108.153` |
-| A | `@` | `185.199.109.153` |
-| A | `@` | `185.199.110.153` |
-| A | `@` | `185.199.111.153` |
-| AAAA | `@` | `2606:50c0:8000::153` |
-| AAAA | `@` | `2606:50c0:8001::153` |
-| AAAA | `@` | `2606:50c0:8002::153` |
-| AAAA | `@` | `2606:50c0:8003::153` |
-| CNAME | `www` | `mcgoogs1-wq.github.io` |
+Leave TTL on **Auto**.
 
-- `@` means the bare domain (YOURDOMAIN.com). Some registrars want the field left
-  blank instead of `@`.
-- Leave TTL at the default.
-- The AAAA rows are optional (they're for IPv6), but they're recommended.
-- **Using Cloudflare?** Set every one of these records to **"DNS only"** (grey
-  cloud), not "Proxied" (orange cloud). Otherwise GitHub can't issue the HTTPS
-  certificate.
+## 2. Wait for the go-ahead, then tell GitHub the domain (~1 min)
 
-## 2. Tell GitHub the domain (~1 min)
+**Don't do this step until the records above are working.** The moment you save
+a custom domain, GitHub starts forwarding the old link to ameliacurrent.com. If
+the domain isn't reachable yet, the site would be down in between. (Claude can
+check this for you. Otherwise, wait until https://ameliacurrent.com shows a
+GitHub "404" page.)
 
 1. Go to **github.com/mcgoogs1-wq/amelia-island-scene/settings/pages**
-2. Under **Custom domain**, type `YOURDOMAIN.com` (no `www`, no `https://`) and
-   click **Save**.
-3. GitHub runs a DNS check. It shows a green **"DNS check successful"** once your
-   records have spread, which usually takes a few minutes and occasionally up
-   to a few hours. Until then it may say the domain is "improperly
-   configured". That's normal while you wait.
+2. Under **Custom domain**, type `ameliacurrent.com` (no `www`, no `https://`)
+   and click **Save**.
+3. Wait for the green **"DNS check successful."**
 
 ## 3. Turn on HTTPS (~1 min, after a short wait)
 
-Once the DNS check passes, GitHub requests a free security certificate. That
-usually takes 15–60 minutes. When the **Enforce HTTPS** checkbox on the same
-page becomes clickable, check it. That's the padlock in the browser.
+GitHub then requests a free security certificate, which usually takes 15–60
+minutes. When **Enforce HTTPS** on the same page becomes clickable, check it.
 
 ## 4. Lock the domain to your account (recommended, ~5 min)
 
 This stops anyone else's GitHub site from ever claiming your domain.
 
 1. Go to **github.com/settings/pages** (your account settings, not the repo).
-2. Click **Add a domain**, enter `YOURDOMAIN.com`.
-3. GitHub shows one **TXT** record. Add it at your registrar exactly as shown,
-   then click **Verify**.
+2. Click **Add a domain** and enter `ameliacurrent.com`.
+3. GitHub shows a TXT record. In Cloudflare, **Add record** → Type **TXT** →
+   paste the **Name** (Cloudflare adds `.ameliacurrent.com` on its own) and the
+   **Content** exactly as GitHub shows → Save.
+4. Back on GitHub, click **Verify**.
 
 ---
 
-**Then you're done.** Share **https://YOURDOMAIN.com** with anyone. Both
-`YOURDOMAIN.com` and `www.YOURDOMAIN.com` work, and both forward to the same
-site.
+**Done.** Share **https://ameliacurrent.com**. `www.ameliacurrent.com` works too.
