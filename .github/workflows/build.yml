@@ -1,4 +1,4 @@
-name: Build & publish Amelia Island Scene
+name: Build & publish The Amelia Current
 
 on:
   schedule:

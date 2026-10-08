@@ -1,4 +1,4 @@
-# Amelia Island Scene
+# The Amelia Current
 
 A single web page that gives you the week at a glance for Amelia Island and
 Fernandina Beach, organized into tabs:
@@ -33,7 +33,7 @@ GitHub Desktop click **Commit to main → Push origin**. The site rebuilds itsel
 within a few minutes.
 
 **To refresh it right now:** on github.com open the repo's **Actions** tab →
-**Build & publish Amelia Island Scene** → **Run workflow**.
+**Build & publish The Amelia Current** → **Run workflow**.
 
 ---
 

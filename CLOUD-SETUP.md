@@ -1,6 +1,6 @@
-# Putting Amelia Island Scene in the cloud (GitHub Pages)
+# Putting The Amelia Current in the cloud (GitHub Pages)
 
-This makes the site rebuild and re-publish **twice a day on GitHub's servers**,
+This makes the site rebuild and re-publish **four times a day on GitHub's servers**,
 so your shared link stays current even when your Mac is off. It's free, and it
 needs **only a GitHub account** — no other services, tokens, or passwords.
 
@@ -29,7 +29,7 @@ Everything technical is already set up in this folder. You have 3 short steps.
 ## Step 3 — Run it once
 
 1. In the repo, click the **Actions** tab.
-2. Pick **"Build & publish Amelia Island Scene"** on the left, then
+2. Pick **"Build & publish The Amelia Current"** on the left, then
    **Run workflow → Run workflow**.
 3. Wait a minute or two. When it finishes (green check), your site is live at:
 
@@ -37,8 +37,7 @@ Everything technical is already set up in this folder. You have 3 short steps.
 
    (You can also find the link under **Settings → Pages**.)
 
-**Share that link with anyone.** From now on it refreshes itself at ~7 AM and
-~4 PM Eastern every day — no Mac required.
+**Share that link with anyone.** From now on it refreshes itself four times a day (about 6 AM, 10 AM, 2 PM and 6 PM Eastern) — no Mac required.
 
 ---
 

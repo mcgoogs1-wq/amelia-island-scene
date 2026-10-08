@@ -1,4 +1,4 @@
-# Putting Amelia Island Scene on theameliacurrent.com
+# Putting The Amelia Current on theameliacurrent.com
 
 The site keeps running on GitHub exactly as it does now. Cloudflare just
 points the name **theameliacurrent.com** at it. Once it's switched over, the old
