@@ -2,18 +2,22 @@ name: Build & publish Amelia Island Scene
 
 on:
   schedule:
-    # GitHub cron is in UTC. These are ~7 AM and ~4 PM US Eastern.
-    - cron: "0 11 * * *"
-    - cron: "0 20 * * *"
+    # GitHub cron is in UTC. Runs are deliberately off the top of the hour,
+    # which GitHub delays the most. In US Eastern (EDT) these are about
+    # 6:17 AM, 10:17 AM, 2:17 PM and 6:17 PM (an hour earlier in winter).
+    - cron: "17 10 * * *"
+    - cron: "17 14 * * *"
+    - cron: "17 18 * * *"
+    - cron: "17 22 * * *"
   workflow_dispatch:        # lets you run it manually from the Actions tab
   push:
     branches: [ main ]
 
-# permissions needed to publish to GitHub Pages
 permissions:
   contents: read
-  pages: write
-  id-token: write
+  pages: write              # publish to GitHub Pages
+  id-token: write           # required by deploy-pages
+  actions: write            # keepalive (see last step)
 
 # don't let two runs overlap
 concurrency:
@@ -22,7 +26,9 @@ concurrency:
 
 jobs:
   build-and-publish:
-    runs-on: ubuntu-latest
+    # pinned: ubuntu-latest moves to a new release on 2026-10-19
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
@@ -32,9 +38,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      # Keep the downloaded history/marine articles, photos and addresses
+      # between runs, so each run only fetches what's actually due (fast, and
+      # gentle on Wikipedia). Changing config.json or the program starts fresh.
+      - name: Restore data caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/facts_cache.json
+            data/banners_cache.json
+            data/geocode_cache.json
+            data/restaurants.json
+          key: dashboard-data-${{ hashFiles('config.json', 'amelia_dashboard.py') }}-${{ github.run_id }}
+          restore-keys: |
+            dashboard-data-${{ hashFiles('config.json', 'amelia_dashboard.py') }}-
 
       - name: Build the dashboard
         run: python amelia_dashboard.py
@@ -47,3 +69,13 @@ jobs:
       - name: Publish to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
+
+      # GitHub pauses scheduled workflows in public repos after 60 days with
+      # no repository activity, which would silently freeze the site.
+      # Re-enabling the workflow through the API resets that timer.
+      - name: Keep the schedule alive
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/build.yml/enable"
