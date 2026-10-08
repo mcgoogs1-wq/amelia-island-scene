@@ -155,7 +155,7 @@ If you see something in the wrong section, fix it with one word:
 - Tides: [NOAA Tides & Currents](https://tidesandcurrents.noaa.gov/stationhome.html?id=8720030),
   station 8720030 (Fernandina Beach)
 - Restaurants: [OpenStreetMap](https://www.openstreetmap.org/copyright) via the
-  Overpass API (the list is cached in `data/restaurants.json`, so it still shows
+  Overpass API (the list is refreshed once a day and cached in `data/restaurants.json`, so it still shows
   even if Overpass is temporarily down). Missing **addresses** are filled in by
   reverse‑geocoding each spot's location with OSM Nominatim (cached once in
   `data/geocode_cache.json`), and a missing **descriptor** is guessed from the

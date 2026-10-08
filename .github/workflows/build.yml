@@ -2,13 +2,11 @@ name: Build & publish The Amelia Current
 
 on:
   schedule:
-    # GitHub cron is in UTC. Runs are deliberately off the top of the hour,
-    # which GitHub delays the most. In US Eastern (EDT) these are about
-    # 6:17 AM, 10:17 AM, 2:17 PM and 6:17 PM (an hour earlier in winter).
-    - cron: "17 10 * * *"
-    - cron: "17 14 * * *"
-    - cron: "17 18 * * *"
-    - cron: "17 22 * * *"
+    # Every hour, around the clock. GitHub starts scheduled runs on quiet
+    # repositories several hours late (3-8 h observed), so running hourly is
+    # what keeps the site fresh overnight: whenever a slot finally fires, it's
+    # never far from the previous one. Each run takes under 2 minutes.
+    - cron: "17 * * * *"
   workflow_dispatch:        # lets you run it manually from the Actions tab
   push:
     branches: [ main ]

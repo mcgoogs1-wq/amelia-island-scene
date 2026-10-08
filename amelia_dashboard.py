@@ -28,7 +28,7 @@ import re
 import sys
 import time
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote, quote_plus
 from zoneinfo import ZoneInfo
@@ -84,6 +84,9 @@ DEFAULT_CONFIG = {
         # Drop OpenStreetMap entries whose name contains any of these (case-
         # insensitive substrings). Handy for bad/combined map listings.
         "exclude": [],
+        # How often to re-query OpenStreetMap. The list barely changes day to
+        # day, and the site rebuilds hourly, so once a day is plenty.
+        "refresh_days": 1,
         "overpass_urls": [
             "https://overpass.kumi.systems/api/interpreter",
             "https://overpass-api.de/api/interpreter",
@@ -727,6 +730,21 @@ def _feed_dt(entry) -> datetime | None:
 # Restaurants (OpenStreetMap Overpass API)
 # --------------------------------------------------------------------------
 
+def _read_restaurant_cache(cache: Path) -> tuple[list[dict], date | None]:
+    """(items, date fetched). Accepts the older plain-list format too, which
+    has no date and so always counts as stale."""
+    try:
+        data = json.loads(cache.read_text())
+    except Exception:  # noqa: BLE001
+        return [], None
+    if isinstance(data, dict):
+        try:
+            return data.get("items") or [], date.fromisoformat(data["built"])
+        except Exception:  # noqa: BLE001
+            return data.get("items") or [], None
+    return data if isinstance(data, list) else [], None
+
+
 def fetch_restaurants(cfg: dict) -> list[dict]:
     """Every dining spot on Amelia Island via OpenStreetMap's Overpass API.
 
@@ -751,7 +769,20 @@ def fetch_restaurants(cfg: dict) -> list[dict]:
     ua = f"AmeliaDashboard/1.0 ({cfg.get('contact_email','')})"
     items: list[dict] = []
     fetched = False
-    for url in endpoints:
+
+    # Reuse the cached list while it's fresh instead of hitting Overpass on
+    # every hourly rebuild.
+    cached_items, built = _read_restaurant_cache(cache)
+    fresh = False
+    if cached_items and built:
+        age = now_local().toordinal() - built.toordinal()
+        fresh = age < rc.get("refresh_days", 1)
+        if fresh:
+            items = cached_items
+            logging.info("Restaurants: %d from cache (refreshed %s)",
+                         len(items), built.isoformat())
+
+    for url in ([] if fresh else endpoints):
         try:
             r = requests.post(url, data={"data": query}, timeout=60,
                               headers={"User-Agent": ua})
@@ -774,9 +805,10 @@ def fetch_restaurants(cfg: dict) -> list[dict]:
         except Exception as ex:  # noqa: BLE001
             logging.warning("Overpass %s failed: %s", url, ex)
 
-    if not items and cache.exists():
-        items = json.loads(cache.read_text())
-        logging.info("Restaurants: %d from cache", len(items))
+    if not items and cached_items:
+        items = cached_items
+        logging.info("Restaurants: %d from cache (Overpass unavailable)",
+                     len(items))
 
     # fill missing street addresses by reverse-geocoding the coordinates
     # (results cached permanently, so each spot is looked up at most once)
@@ -791,8 +823,13 @@ def fetch_restaurants(cfg: dict) -> list[dict]:
     if filled:
         _save_geocode_cache(geo)
         logging.info("Restaurants: geocoded %d addresses", filled)
-    if fetched or filled:
-        cache.write_text(json.dumps(items), encoding="utf-8")
+    # Stamp the cache when fetched, geocoded, or when falling back to an
+    # undated (old-format) cache, so a flaky Overpass is retried daily rather
+    # than on every hourly rebuild.
+    if items and (fetched or filled or built is None):
+        stamp = now_local().date() if (fetched or built is None) else built
+        cache.write_text(json.dumps({"built": stamp.isoformat(), "items": items}),
+                         encoding="utf-8")
 
     # drop unwanted OpenStreetMap listings (e.g. bad/combined map names)
     excl = [x.lower() for x in rc.get("exclude", [])]

@@ -1,6 +1,6 @@
 # Putting The Amelia Current in the cloud (GitHub Pages)
 
-This makes the site rebuild and re-publish **four times a day on GitHub's servers**,
+This makes the site rebuild and re-publish **every hour on GitHub's servers**,
 so your shared link stays current even when your Mac is off. It's free, and it
 needs **only a GitHub account** — no other services, tokens, or passwords.
 
@@ -37,7 +37,7 @@ Everything technical is already set up in this folder. You have 3 short steps.
 
    (You can also find the link under **Settings → Pages**.)
 
-**Share that link with anyone.** From now on it refreshes itself four times a day (about 6 AM, 10 AM, 2 PM and 6 PM Eastern) — no Mac required.
+**Share that link with anyone.** From now on it refreshes itself every hour, around the clock — no Mac required.
 
 ---
 
