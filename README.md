@@ -1,61 +1,42 @@
-# Amelia Island & Fernandina Beach — weekly dashboard
+# Amelia Island Scene
 
 A single web page that gives you the week at a glance for Amelia Island and
-Fernandina Beach:
+Fernandina Beach, organized into tabs:
 
-- 🎶 **Live music this week** — every night's lineup across local venues
-  (Sliders, Green Turtle, Salt Life, Sandbar, Mocama, Palace, Boat House…),
-  grouped by day.
-- 📅 **Other events this week** — trivia, markets, festivals, classes, book
-  events, and more.
-- 📰 **Local news** — recent Amelia Island / Fernandina Beach headlines from
-  multiple outlets, plus official City of Fernandina Beach announcements.
-- ☀️ **Weather** — the National Weather Service 7‑day forecast, current
-  conditions, and sunrise/sunset.
-- 🌊 **Tides** — daily high/low tide times for Fernandina Beach.
-- 🍽️ **Restaurants on the Island** — every dining spot on Amelia Island, with
-  cuisine and a link, from OpenStreetMap.
+- 🌤️ **Weather & Tides** (the opening view): the National Weather Service 7‑day
+  forecast, current conditions, sunrise/sunset, and daily high/low tides.
+- 🎶 **Live Music**: every night's lineup across local venues, grouped by day.
+- 📅 **Events**: trivia, markets, festivals, classes, and more.
+- 🍽️ **Bars & Restaurants**: every spot on the island, filterable by type, each
+  with a Yelp link.
+- 📰 **News**: recent local headlines plus City of Fernandina Beach updates.
+- 📜 **Island & Sea**: a daily island-history story and a daily Florida marine
+  life profile, each with a photo.
+- 🗂️ **Everything**: all of the above on one long page.
 
-Everything is free and needs no accounts or API keys. The page rebuilds itself
-on a schedule and also auto-refreshes in your browser every 30 minutes.
+Everything is free and needs no paid accounts or API keys.
 
 ---
 
-## Share it online (get a public link)
+## The live site
 
-By default the dashboard is a file on your Mac, which only *you* can open. To get
-a link you can send to anyone, it publishes itself to **Netlify** (free) after
-each build. One‑time setup:
+**https://mcgoogs1-wq.github.io/amelia-island-scene/** (anyone can open it)
 
-1. Create a free account at **[netlify.com](https://www.netlify.com/)**.
-2. Make an access token: Netlify → your avatar → **User settings** →
-   **Applications** → **Personal access tokens** → **New access token** →
-   copy the token.
-3. Open `config.json` and paste it into `publish` → `netlify_token`
-   (replacing `PUT-YOUR-NETLIFY-TOKEN-HERE`).
-4. Run `./run_dashboard.sh`. It creates the site and prints the public link
-   (something like `https://amelia-island-scene.netlify.app`). Share that link!
+It runs entirely on GitHub's servers, so your Mac can be off. Twice a day
+GitHub rebuilds the page with fresh data and republishes it. That's the
+`.github/workflows/build.yml` file. Open pages also refresh themselves every
+30 minutes. See `CLOUD-SETUP.md` for how it was set up.
 
-After that it re‑publishes automatically on every scheduled rebuild, so the
-public page stays current. To turn publishing off, set `publish.enabled` to
-`false`. (You can rename the site to a prettier address in the Netlify dashboard.)
+**To change something** (add a restaurant, etc.): edit `config.json`, then in
+GitHub Desktop click **Commit to main → Push origin**. The site rebuilds itself
+within a few minutes.
+
+**To refresh it right now:** on github.com open the repo's **Actions** tab →
+**Build & publish Amelia Island Scene** → **Run workflow**.
 
 ---
 
-## How to open it
-
-After a run, the dashboard lives at:
-
-```
-output/index.html
-```
-
-Double‑click that file to open it in your browser, or **bookmark it** so it's
-one click away. (In your browser, the address will start with `file:///…`.)
-
----
-
-## Run it once, by hand
+## Preview it on your Mac (optional)
 
 From this `amelia-dashboard` folder:
 
@@ -63,45 +44,20 @@ From this `amelia-dashboard` folder:
 ./run_dashboard.sh
 ```
 
-It fetches everything and rewrites `output/index.html`. Takes a few seconds.
-
-> Want it to pop open in your browser automatically after each run? Set
-> `"open_after_run": true` in `config.json`.
-
----
-
-## Make it update automatically
-
-macOS can rebuild the dashboard for you on a schedule using a "launch agent":
-
-```bash
-cp "com.brucemcgoogan.amelia-dashboard.plist" ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.brucemcgoogan.amelia-dashboard.plist
-```
-
-By default it rebuilds at **7:00 AM and 4:00 PM daily**, and once whenever you
-log in. To change the times, edit the `Hour`/`Minute` values in the plist
-before copying it.
-
-To turn it off later:
-
-```bash
-launchctl unload ~/Library/LaunchAgents/com.brucemcgoogan.amelia-dashboard.plist
-```
-
-> Note: the Mac has to be awake at the scheduled time for it to run. The
-> browser page also refreshes itself every 30 minutes while it's open, so a
-> tab you leave open stays reasonably current on its own.
+That builds `output/index.html`, which you can double‑click to open. This is
+only a local preview; it doesn't change the live site.
 
 ---
 
 ## Where things live
 
-- `amelia_dashboard.py` — the program itself.
-- `config.json` — your settings (see below).
-- `output/index.html` — the dashboard you open (rebuilt every run).
-- `logs/dashboard.log` — a record of each run, handy if something looks off.
-- `.venv/` — this project's private Python environment.
+- `amelia_dashboard.py`: the program itself.
+- `config.json`: your settings (see below).
+- `.github/workflows/build.yml`: the twice-daily cloud rebuild.
+- `data/`: cached restaurant addresses, history/marine articles, and photos.
+- `output/index.html`: the local preview (not uploaded).
+- `logs/dashboard.log`: a record of local runs.
+- `.venv/`: this project's private Python environment (local only).
 
 ---
 
@@ -150,7 +106,7 @@ put them in the `restaurants` → `custom` list. Each entry can be **just a name
   you can also use this to fix a wrong cuisine or add a website.
 
 Your additions always show, even when OpenStreetMap is unreachable. Save the
-file and run `./run_dashboard.sh` (or wait for the next scheduled rebuild).
+file, then commit and push it from GitHub Desktop to update the live site.
 
 ### Removing a restaurant
 
@@ -188,8 +144,10 @@ If you see something in the wrong section, fix it with one word:
 
 ## Where the data comes from
 
-- Live music & events: [FernandinaConnect](https://fernandinaconnect.com/) and
-  [AllEvents](https://allevents.in/fernandina-beach/music)
+- Live music & events: [Fernandina Events](https://fernandinaevents.com/live-music)
+  (primary) and [AllEvents](https://allevents.in/fernandina-beach/music)
+- Island history & marine life: [Wikipedia](https://en.wikipedia.org/);
+  banner photos: [Wikimedia Commons](https://commons.wikimedia.org/)
 - News: Google News (aggregating local outlets) and the
   [City of Fernandina Beach](https://www.fbfl.us/)
 - Weather: [National Weather Service](https://www.weather.gov/) (api.weather.gov)

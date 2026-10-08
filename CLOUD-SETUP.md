@@ -49,6 +49,5 @@ main → Push origin**. The site rebuilds automatically within a minute.
 ### Notes
 - If nobody touches the repo for ~60 days, GitHub pauses the daily schedule; any
   commit or a manual **Run workflow** wakes it back up.
-- The old Mac scheduler (`launchctl`) is no longer needed and can be removed.
 - Prefer a private repo or a prettier domain instead of GitHub Pages? Netlify is
   an alternative (the code already supports it) — just ask.
