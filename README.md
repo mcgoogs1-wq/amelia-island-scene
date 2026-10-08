@@ -50,6 +50,16 @@ only a local preview; it doesn't change the live site.
 
 ---
 
+## Add your own photos to the banner
+
+Drop landscape photos of the island into the **`photos`** folder (JPG, PNG,
+iPhone HEIC or WebP), give each a descriptive file name (it becomes the
+caption), then **Commit → Push** in GitHub Desktop. They join the daily banner
+rotation, with each of your photos getting 2 draws to every Wikimedia photo's 1
+(`banner.own_photos_boost`). Each is shrunk to a web-friendly copy with phone
+metadata (GPS) removed; the originals are left alone. Portrait photos are
+skipped. Details in `photos/README.txt`.
+
 ## Where things live
 
 - `amelia_dashboard.py`: the program itself.

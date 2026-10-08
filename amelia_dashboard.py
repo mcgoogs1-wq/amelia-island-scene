@@ -157,6 +157,11 @@ DEFAULT_CONFIG = {
         "enabled": True,
         "refresh_days": 7,
         "per_source_cap": 14,
+        # Your own photos: drop landscape pictures into this folder (see
+        # photos/README.txt). own_photos_boost is how many "tickets" each of
+        # your photos gets in the daily draw, versus one per Wikimedia photo.
+        "own_photos_dir": "photos",
+        "own_photos_boost": 2,
         # Wikimedia Commons categories — the richest source of local scenery
         "categories": [
             "Amelia Island", "Amelia Island Light", "Amelia Island State Park",
@@ -1298,7 +1303,7 @@ def _spread(items: list) -> list:
     article together), so walking them in order gives a run of near-identical
     days; this makes consecutive days jump around the pool instead."""
     def key(it: dict) -> str:
-        raw = f"{it.get('url', '')}|{it.get('title', '')}|{str(it.get('text', ''))[:80]}"
+        raw = json.dumps(it, sort_keys=True, default=str)
         return hashlib.sha1(raw.encode("utf-8")).hexdigest()
     return sorted(items, key=key)
 
@@ -1464,15 +1469,87 @@ def fetch_banners(cfg: dict) -> list[dict]:
     return cached["images"] if cached else []
 
 
+def _own_photos(cfg: dict, out_dir: Path) -> list[dict]:
+    """Photos the user drops into the project's photos/ folder.
+
+    Each one is resized for the web (max 1920px wide), saved without its
+    metadata (so no phone GPS location is published), copied into the site,
+    and returned as a banner entry. Portrait photos are skipped because the
+    banner is a wide strip."""
+    bc = cfg.get("banner", {})
+    src_dir = HERE / bc.get("own_photos_dir", "photos")
+    if not src_dir.is_dir():
+        return []
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        logging.warning("Own photos skipped: Pillow not installed "
+                        "(pip install pillow pillow-heif)")
+        return []
+    try:
+        from pillow_heif import register_heif_opener  # iPhone .heic photos
+        register_heif_opener()
+    except ImportError:
+        pass
+
+    dest = out_dir / "photos"
+    dest.mkdir(parents=True, exist_ok=True)
+    for old in dest.glob("*.jpg"):      # drop photos removed from the folder
+        old.unlink()
+
+    out = []
+    exts = (".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff")
+    for p in sorted(src_dir.iterdir()):
+        if p.suffix.lower() not in exts or p.name.startswith("."):
+            continue
+        try:
+            with Image.open(p) as im:
+                im = ImageOps.exif_transpose(im)   # honour phone rotation
+                w, h = im.size
+                if w < h * 1.2:
+                    logging.info("Own photo %s skipped: portrait (the banner "
+                                 "needs a landscape photo)", p.name)
+                    continue
+                if w > 1920:
+                    im = im.resize((1920, round(h * 1920 / w)), Image.LANCZOS)
+                im = im.convert("RGB")
+                slug = re.sub(r"[^a-z0-9]+", "-", p.stem.lower()).strip("-") or "photo"
+                target = dest / f"{slug}.jpg"
+                im.save(target, "JPEG", quality=85, optimize=True)  # no EXIF
+        except Exception as ex:  # noqa: BLE001
+            logging.warning("Own photo %s skipped: %s", p.name, ex)
+            continue
+        title = re.sub(r"[_\-]+", " ", p.stem).strip()
+        title = title[:1].upper() + title[1:] if title else "My photo"
+        out.append({"url": f"photos/{slug}.jpg", "title": title, "own": True})
+    if out:
+        logging.info("Banner: +%d of your own photos from %s/", len(out),
+                     src_dir.name)
+    return out
+
+
+def _with_own_photos(cfg: dict, banners: list[dict], out_dir: Path) -> list[dict]:
+    """Mix the user's photos into the banner pool. Each gets own_photos_boost
+    'tickets' in the daily draw (vs one per Wikimedia photo)."""
+    own = _own_photos(cfg, out_dir)
+    boost = max(1, int(cfg.get("banner", {}).get("own_photos_boost", 2)))
+    extra = [{**o, "slot": i} for o in own for i in range(boost)]
+    return list(banners) + extra
+
+
 def _banner_html(images: list[dict]) -> str:
     if not images:
         return ""
     b = _daily_pick(images)
     name = re.sub(r"[_-]+", " ", b.get("title") or "").strip()
     name = re.sub(r"\s*\(\d+\)\s*$", "", name)[:70] or "Amelia Island"
-    cap = (f'<a class="bcap" href="{esc(b["descurl"])}" target="_blank" '
-           f'rel="noopener">📷 {esc(name)} · Wikimedia Commons</a>'
-           if b.get("descurl") else "")
+    if b.get("own"):
+        cap = f'<span class="bcap">📷 {esc(name)}</span>'
+    elif b.get("descurl"):
+        cap = (f'<a class="bcap" href="{esc(b["descurl"])}" target="_blank" '
+               f'rel="noopener">📷 {esc(name)} · Wikimedia Commons</a>')
+    else:
+        cap = ""
     return (f'<div class="hero-banner"><img src="{esc(b["url"])}" '
             f'alt="Amelia Island landscape" loading="lazy">{cap}</div>')
 
@@ -1922,7 +1999,10 @@ def save_share_image(cfg: dict, banners: list, out_dir: Path) -> str:
     site = (cfg.get("site_url") or "").strip()
     if not banners or not site:
         return ""
-    src = _daily_pick(banners).get("url", "")
+    pick = _daily_pick(banners)
+    src = pick.get("url", "")
+    if pick.get("own"):
+        return site.rstrip("/") + "/" + src   # already copied into the site
     ua = f"AmeliaDashboard/1.0 ({cfg.get('contact_email', '')})"
     try:
         r = requests.get(src, headers={"User-Agent": ua}, timeout=30)
@@ -2442,6 +2522,7 @@ def main() -> int:
 
     out_path = HERE / cfg["output_file"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    data["banners"] = _with_own_photos(cfg, data["banners"], out_path.parent)
     data["share_image"] = save_share_image(cfg, data["banners"], out_path.parent)
     out_path.write_text(render_html(cfg, data), encoding="utf-8")
     logging.info("Wrote %s", out_path)
