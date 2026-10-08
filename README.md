@@ -20,7 +20,7 @@ Everything is free and needs no paid accounts or API keys.
 
 ## The live site
 
-**https://ameliacurrent.com** (anyone can open it; the original
+**https://theameliacurrent.com** (anyone can open it; the original
 `mcgoogs1-wq.github.io/amelia-island-scene` link forwards there)
 
 It runs entirely on GitHub's servers, so your Mac can be off. Twice a day

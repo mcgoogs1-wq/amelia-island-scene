@@ -1,7 +1,7 @@
-# Putting Amelia Island Scene on ameliacurrent.com
+# Putting Amelia Island Scene on theameliacurrent.com
 
 The site keeps running on GitHub exactly as it does now. Cloudflare just
-points the name **ameliacurrent.com** at it. Once it's switched over, the old
+points the name **theameliacurrent.com** at it. Once it's switched over, the old
 `mcgoogs1-wq.github.io/amelia-island-scene` link forwards to the new address,
 so anything already shared keeps working.
 
@@ -9,9 +9,9 @@ so anything already shared keeps working.
 
 ## 1. Add the DNS records in Cloudflare (~5 min)
 
-1. Go to **dash.cloudflare.com** and click **ameliacurrent.com**.
+1. Go to **dash.cloudflare.com** and click **theameliacurrent.com**.
 2. In the left sidebar, open **DNS → Records**.
-3. If any records already exist with the name `ameliacurrent.com` (or `@`) or
+3. If any records already exist with the name `theameliacurrent.com` (or `@`) or
    `www`, delete them. Leave any MX or TXT records alone.
 4. Click **Add record** once for each row below.
 
@@ -40,13 +40,13 @@ Leave TTL on **Auto**.
 ## 2. Wait for the go-ahead, then tell GitHub the domain (~1 min)
 
 **Don't do this step until the records above are working.** The moment you save
-a custom domain, GitHub starts forwarding the old link to ameliacurrent.com. If
+a custom domain, GitHub starts forwarding the old link to theameliacurrent.com. If
 the domain isn't reachable yet, the site would be down in between. (Claude can
-check this for you. Otherwise, wait until https://ameliacurrent.com shows a
+check this for you. Otherwise, wait until https://theameliacurrent.com shows a
 GitHub "404" page.)
 
 1. Go to **github.com/mcgoogs1-wq/amelia-island-scene/settings/pages**
-2. Under **Custom domain**, type `ameliacurrent.com` (no `www`, no `https://`)
+2. Under **Custom domain**, type `theameliacurrent.com` (no `www`, no `https://`)
    and click **Save**.
 3. Wait for the green **"DNS check successful."**
 
@@ -60,12 +60,12 @@ minutes. When **Enforce HTTPS** on the same page becomes clickable, check it.
 This stops anyone else's GitHub site from ever claiming your domain.
 
 1. Go to **github.com/settings/pages** (your account settings, not the repo).
-2. Click **Add a domain** and enter `ameliacurrent.com`.
+2. Click **Add a domain** and enter `theameliacurrent.com`.
 3. GitHub shows a TXT record. In Cloudflare, **Add record** → Type **TXT** →
-   paste the **Name** (Cloudflare adds `.ameliacurrent.com` on its own) and the
+   paste the **Name** (Cloudflare adds `.theameliacurrent.com` on its own) and the
    **Content** exactly as GitHub shows → Save.
 4. Back on GitHub, click **Verify**.
 
 ---
 
-**Done.** Share **https://ameliacurrent.com**. `www.ameliacurrent.com` works too.
+**Done.** Share **https://theameliacurrent.com**. `www.theameliacurrent.com` works too.
