@@ -19,6 +19,7 @@ Data sources (all free, no API key):
 
 from __future__ import annotations
 
+import hashlib
 import html
 import io
 import json
@@ -1291,16 +1292,28 @@ _MARINE_FACTS = [
 ]
 
 
+def _spread(items: list) -> list:
+    """The pool in a fixed pseudo-random order. Pools are built source by
+    source (all the Fort Clinch photos together, all passages from one
+    article together), so walking them in order gives a run of near-identical
+    days; this makes consecutive days jump around the pool instead."""
+    def key(it: dict) -> str:
+        raw = f"{it.get('url', '')}|{it.get('title', '')}|{str(it.get('text', ''))[:80]}"
+        return hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return sorted(items, key=key)
+
+
 def _daily_pick(items: list) -> dict:
     """Deterministically rotate through items by calendar day."""
-    return items[now_local().toordinal() % len(items)]
+    pool = _spread(items)
+    return pool[now_local().toordinal() % len(pool)]
 
 
 def _daily_pick_fact(items: list) -> dict:
     """Rotate daily, but prefer entries that have a picture so the section
     always shows an image (falls back to the full pool if none do)."""
     withimg = [f for f in items if f.get("image")]
-    pool = withimg or items
+    pool = _spread(withimg or items)
     return pool[now_local().toordinal() % len(pool)] if pool else {}
 
 
@@ -2181,13 +2194,14 @@ _CSS = """
 
   .hero-banner{ position:relative; margin-top:16px; border-radius:20px; overflow:hidden;
     box-shadow:var(--shadow); border:1px solid var(--line); background:var(--line); }
-  .hero-banner img{ display:block; width:100%; height:300px; object-fit:cover; }
-  @media (max-width:900px){ .hero-banner img{ height:230px; } }
+  /* height follows width (~2.3:1, capped) so most of each landscape photo is
+     visible rather than a thin, zoomed-in strip */
+  .hero-banner img{ display:block; width:100%; height:auto; aspect-ratio:21/9;
+    max-height:560px; object-fit:cover; object-position:center; }
   .bcap{ position:absolute; right:10px; bottom:9px; background:rgba(0,0,0,.5); color:#fff;
     font-size:.72rem; font-weight:700; padding:4px 10px; border-radius:999px;
     text-decoration:none; }
   .bcap:hover{ background:rgba(0,0,0,.68); }
-  @media (max-width:520px){ .hero-banner img{ height:175px; } }
 
   section.card{ position:relative; background:var(--card); border:1px solid var(--line);
     border-top:5px solid var(--accent); border-radius:20px; padding:20px 22px; margin-top:20px;
