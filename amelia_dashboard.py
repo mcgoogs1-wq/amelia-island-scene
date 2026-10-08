@@ -46,6 +46,12 @@ TZ = ZoneInfo("America/New_York")
 
 DEFAULT_CONFIG = {
     "location_name": "Amelia Island & Fernandina Beach",
+    # The public address of the live site; used for link previews when the
+    # page is shared. Update this when the site moves to a custom domain.
+    "site_url": "https://mcgoogs1-wq.github.io/amelia-island-scene/",
+    "site_description": ("Live music, events, weather, tides, bars and "
+                         "restaurants, and local news for Amelia Island and "
+                         "Fernandina Beach, Florida. Updated throughout the day."),
     "days_ahead": 7,
     "output_file": "output/index.html",
     "open_after_run": False,
@@ -1852,7 +1858,63 @@ def render_html(cfg: dict, data: dict) -> str:
                                "for details, or filter by type below."))
         + _TABS_JS
     )
-    return _html_page(loc, esc(generated), strip_html, body)
+    return _html_page(loc, esc(generated), strip_html, body,
+                      _share_meta(cfg, data.get("share_image") or ""))
+
+
+def save_share_image(cfg: dict, banners: list, out_dir: Path) -> str:
+    """Copy today's banner photo onto the site itself and return its public
+    URL for link previews. Wikimedia blocks the bot that Facebook, Messenger
+    and iMessage use to build previews, so pointing them at Wikimedia would
+    leave shared links without a picture."""
+    for old in out_dir.glob("share.*"):
+        old.unlink()
+    site = (cfg.get("site_url") or "").strip()
+    if not banners or not site:
+        return ""
+    src = _daily_pick(banners).get("url", "")
+    ua = f"AmeliaDashboard/1.0 ({cfg.get('contact_email', '')})"
+    try:
+        r = requests.get(src, headers={"User-Agent": ua}, timeout=30)
+        r.raise_for_status()
+        ctype = r.headers.get("Content-Type", "")
+        ext = "png" if "png" in ctype else "jpg"
+        if not ctype.startswith("image/") or len(r.content) > 8_000_000:
+            raise ValueError(f"unsuitable image ({ctype}, {len(r.content)} bytes)")
+        (out_dir / f"share.{ext}").write_bytes(r.content)
+        return site.rstrip("/") + f"/share.{ext}"
+    except Exception as ex:  # noqa: BLE001
+        logging.warning("Share image skipped: %s", ex)
+        return ""
+
+
+def _share_meta(cfg: dict, image: str) -> str:
+    """Description, link-preview (Open Graph / Twitter) tags, tab icon and
+    mobile browser color, so a shared link shows a title, blurb and photo."""
+    title = esc(cfg["location_name"])
+    desc = esc(cfg.get("site_description", ""))
+    url = esc(cfg.get("site_url", ""))
+    tags = [
+        f'<meta name="description" content="{desc}">',
+        '<meta name="theme-color" content="#17475a">',
+        ('<link rel="icon" href="data:image/svg+xml,'
+         "<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22>"
+         "<text y=%22.9em%22 font-size=%2290%22>🌊</text></svg>\">"),
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{title}">',
+        f'<meta property="og:title" content="{title}">',
+        f'<meta property="og:description" content="{desc}">',
+        '<meta name="twitter:card" content="summary_large_image">',
+        f'<meta name="twitter:title" content="{title}">',
+        f'<meta name="twitter:description" content="{desc}">',
+    ]
+    if url:
+        tags += [f'<link rel="canonical" href="{url}">',
+                 f'<meta property="og:url" content="{url}">']
+    if image:
+        tags += [f'<meta property="og:image" content="{esc(image)}">',
+                 f'<meta name="twitter:image" content="{esc(image)}">']
+    return "\n".join(tags)
 
 
 _TABS_JS = """<script>
@@ -2211,7 +2273,8 @@ _WAVE = ('<div class="wave"><svg viewBox="0 0 1200 40" preserveAspectRatio="none
          'L1200,40 L0,40 Z"/></svg></div>')
 
 
-def _html_page(loc: str, generated: str, strip_html: str, body: str) -> str:
+def _html_page(loc: str, generated: str, strip_html: str, body: str,
+               meta: str = "") -> str:
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2219,6 +2282,7 @@ def _html_page(loc: str, generated: str, strip_html: str, body: str) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="1800">
 <title>{loc} — This Week</title>
+{meta}
 {_FONTS}
 <style>{_CSS}</style>
 </head>
@@ -2327,6 +2391,7 @@ def main() -> int:
 
     out_path = HERE / cfg["output_file"]
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    data["share_image"] = save_share_image(cfg, data["banners"], out_path.parent)
     out_path.write_text(render_html(cfg, data), encoding="utf-8")
     logging.info("Wrote %s", out_path)
 
