@@ -21,14 +21,11 @@ from __future__ import annotations
 
 import hashlib
 import html
-import io
 import json
 import logging
-import os
 import re
 import sys
 import time
-import zipfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote, quote_plus
@@ -57,15 +54,6 @@ DEFAULT_CONFIG = {
     "output_file": "output/index.html",
     "open_after_run": False,
     "contact_email": "amelia-island-scene dashboard",
-    "publish": {
-        # Publish the page to the web (a shareable link) after each build.
-        # One-time setup: make a free Netlify account, create a Personal Access
-        # Token, and paste it below. See the README.
-        "enabled": True,
-        "provider": "netlify",
-        "site_name": "amelia-island-scene",
-        "netlify_token": "PUT-YOUR-NETLIFY-TOKEN-HERE",
-    },
     "weather": {"office": "JAX", "gridX": 72, "gridY": 80,
                 "lat": 30.6697, "lon": -81.4626},
     "tides": {"station": "8720030"},
@@ -2447,59 +2435,6 @@ def _html_page(loc: str, generated: str, strip_html: str, body: str,
 # Main
 # --------------------------------------------------------------------------
 
-def publish_site(cfg: dict) -> None:
-    """Publish output/ to the web via Netlify's API (no extra software needed).
-    Creates the site on first run; deploys the current build every time."""
-    pub = cfg.get("publish", {})
-    if not pub.get("enabled") or pub.get("provider") != "netlify":
-        return
-    # token: config first, else the NETLIFY_AUTH_TOKEN env var (used in the cloud)
-    token = (pub.get("netlify_token") or "").strip()
-    if not token or token.startswith("PUT-"):
-        token = os.environ.get("NETLIFY_AUTH_TOKEN", "").strip()
-    if not token:
-        logging.info("Publish: no Netlify token set yet; skipping (see README)")
-        return
-    hdr = {"Authorization": f"Bearer {token}"}
-    state = HERE / "data" / "netlify_site.json"
-    try:
-        # site id: env (cloud) > saved state (local) > create a new site
-        env_site = os.environ.get("NETLIFY_SITE_ID", "").strip()
-        saved = json.loads(state.read_text()) if state.exists() else {}
-        if env_site:
-            site_id, site_url = env_site, ""
-        elif saved.get("id"):
-            site_id, site_url = saved["id"], saved.get("url", "")
-        else:
-            body = {"name": pub.get("site_name", "amelia-island-scene")}
-            r = requests.post("https://api.netlify.com/api/v1/sites",
-                              headers=hdr, json=body, timeout=30)
-            if r.status_code >= 400:  # name likely taken -> let Netlify pick one
-                r = requests.post("https://api.netlify.com/api/v1/sites",
-                                  headers=hdr, json={}, timeout=30)
-            r.raise_for_status()
-            s = r.json()
-            site_id, site_url = s["id"], (s.get("ssl_url") or s.get("url") or "")
-            state.write_text(json.dumps({"id": site_id, "url": site_url}))
-
-        out_dir = (HERE / cfg["output_file"]).parent
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-            for p in out_dir.rglob("*"):
-                if p.is_file():
-                    z.write(p, p.relative_to(out_dir))
-        r = requests.post(
-            f"https://api.netlify.com/api/v1/sites/{site_id}/deploys",
-            headers={**hdr, "Content-Type": "application/zip"},
-            data=buf.getvalue(), timeout=180)
-        r.raise_for_status()
-        url = r.json().get("ssl_url") or r.json().get("url") or site_url
-        logging.info("Published to %s", url)
-        print(f"🌐 Live at: {url}")
-    except Exception as ex:  # noqa: BLE001
-        logging.warning("Publish failed: %s", ex)
-
-
 def main() -> int:
     setup_logging()
     cfg = load_config()
@@ -2526,8 +2461,6 @@ def main() -> int:
     data["share_image"] = save_share_image(cfg, data["banners"], out_path.parent)
     out_path.write_text(render_html(cfg, data), encoding="utf-8")
     logging.info("Wrote %s", out_path)
-
-    publish_site(cfg)
 
     if cfg.get("open_after_run"):
         import subprocess

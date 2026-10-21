@@ -5,12 +5,6 @@
   "output_file": "output/index.html",
   "open_after_run": false,
   "contact_email": "amelia-island-scene dashboard",
-  "publish": {
-    "enabled": true,
-    "provider": "netlify",
-    "site_name": "amelia-island-scene",
-    "netlify_token": "PUT-YOUR-NETLIFY-TOKEN-HERE"
-  },
   "weather": {
     "office": "JAX",
     "gridX": 72,
