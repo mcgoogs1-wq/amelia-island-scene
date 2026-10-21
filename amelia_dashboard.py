@@ -146,10 +146,10 @@ DEFAULT_CONFIG = {
         "refresh_days": 7,
         "per_source_cap": 14,
         # Your own photos: drop landscape pictures into this folder (see
-        # photos/README.txt). own_photos_boost is how many "tickets" each of
-        # your photos gets in the daily draw, versus one per Wikimedia photo.
+        # photos/README.txt). Every own_photos_every-th day the banner shows
+        # one of your photos (cycling through them); other days use Wikimedia.
         "own_photos_dir": "photos",
-        "own_photos_boost": 2,
+        "own_photos_every": 4,
         # Wikimedia Commons categories — the richest source of local scenery
         "categories": [
             "Amelia Island", "Amelia Island Light", "Amelia Island State Park",
@@ -1297,9 +1297,24 @@ def _spread(items: list) -> list:
 
 
 def _daily_pick(items: list) -> dict:
-    """Deterministically rotate through items by calendar day."""
+    """Deterministically rotate through items by calendar day.
+
+    If the pool contains the user's own photos (entries tagged own=True,
+    carrying an 'every' cadence), every Nth day is a "your photos" day that
+    cycles through them; the other days rotate the rest. With few own photos
+    this guarantees they appear regularly instead of once in two months."""
+    day = now_local().toordinal()
+    own = [i for i in items if i.get("own")]
+    rest = [i for i in items if not i.get("own")]
+    if own and rest:
+        every = max(1, int(own[0].get("every", 4)))
+        if day % every == 0:
+            pool = _spread(own)
+            return pool[(day // every) % len(pool)]
+        pool = _spread(rest)
+        return pool[day % len(pool)]
     pool = _spread(items)
-    return pool[now_local().toordinal() % len(pool)]
+    return pool[day % len(pool)]
 
 
 def _daily_pick_fact(items: list) -> dict:
@@ -1517,12 +1532,11 @@ def _own_photos(cfg: dict, out_dir: Path) -> list[dict]:
 
 
 def _with_own_photos(cfg: dict, banners: list[dict], out_dir: Path) -> list[dict]:
-    """Mix the user's photos into the banner pool. Each gets own_photos_boost
-    'tickets' in the daily draw (vs one per Wikimedia photo)."""
-    own = _own_photos(cfg, out_dir)
-    boost = max(1, int(cfg.get("banner", {}).get("own_photos_boost", 2)))
-    extra = [{**o, "slot": i} for o in own for i in range(boost)]
-    return list(banners) + extra
+    """Mix the user's photos into the banner pool, tagged with the cadence
+    (banner.own_photos_every) that _daily_pick uses to give them a turn."""
+    every = max(1, int(cfg.get("banner", {}).get("own_photos_every", 4)))
+    own = [{**o, "every": every} for o in _own_photos(cfg, out_dir)]
+    return list(banners) + own
 
 
 def _banner_html(images: list[dict]) -> str:

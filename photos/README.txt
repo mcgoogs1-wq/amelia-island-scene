@@ -21,5 +21,6 @@ Good to know
   site. The originals here stay untouched.
 - Hidden phone data such as the GPS location is removed from the web copy.
 - To remove a photo from the rotation, delete it from this folder and push.
-- Your photos get 2 "tickets" each in the daily draw versus 1 for each
-  Wikimedia photo (own_photos_boost in config.json), so they show up more.
+- Every 4th day is a "your photos" day: the banner shows one of your photos,
+  cycling through them. The other days use Wikimedia photos. To change the
+  cadence, edit own_photos_every in config.json (2 = every other day).
