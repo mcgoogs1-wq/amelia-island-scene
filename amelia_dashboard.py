@@ -1086,10 +1086,33 @@ def fetch_tides(cfg: dict) -> dict:
                 "time": dt.strftime("%-I:%M %p"),
                 "type": "High" if p["type"] == "H" else "Low",
                 "height": f"{float(p['v']):.1f} ft",
+                "minutes": dt.hour * 60 + dt.minute,   # for the tide chart
+                "ft": float(p["v"]),
             })
     except Exception as ex:  # noqa: BLE001
         logging.warning("Tides failed: %s", ex)
     return by_day
+
+
+def fetch_tide_curve(cfg: dict) -> dict[str, list[tuple[int, float]]]:
+    """Predicted water level every 30 minutes, per day: {day: [(minute, ft)]}.
+    Drawn as the tide curve; the highs/lows from fetch_tides label it."""
+    station = cfg["tides"]["station"]
+    today = now_local()
+    end = today + timedelta(days=cfg["days_ahead"])
+    url = ("https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?"
+           f"product=predictions&application=AmeliaDashboard&datum=MLLW&"
+           f"station={station}&time_zone=lst_ldt&units=english&interval=30&"
+           f"format=json&begin_date={today:%Y%m%d}&end_date={end:%Y%m%d}")
+    curve: dict[str, list[tuple[int, float]]] = {}
+    try:
+        for p in http_get(url, cfg).json().get("predictions", []):
+            dt = datetime.strptime(p["t"], "%Y-%m-%d %H:%M")
+            curve.setdefault(dt.strftime("%Y-%m-%d"), []).append(
+                (dt.hour * 60 + dt.minute, float(p["v"])))
+    except Exception as ex:  # noqa: BLE001
+        logging.warning("Tide curve failed: %s", ex)
+    return curve
 
 
 # --------------------------------------------------------------------------
@@ -1823,6 +1846,95 @@ def fetch_facts(cfg: dict) -> dict:
     return _facts_fallback()
 
 
+def _tide_pill(t: dict) -> str:
+    return (f'{"▲" if t["type"] == "High" else "▼"} {esc(t["time"])} '
+            f'<em>{esc(t["height"])}</em>')
+
+
+def _render_tides_plain(by_day: dict, days: int) -> str:
+    """Fallback when the 30-minute curve isn't available: the pill list."""
+    rows = []
+    for i in range(days + 1):
+        day = now_local() + timedelta(days=i)
+        tides = by_day.get(day.strftime("%Y-%m-%d"), [])
+        if not tides:
+            continue
+        label = "Today" if i == 0 else day.strftime("%a %b %-d")
+        cells = " ".join(f'<span class="tide {t["type"].lower()}">{_tide_pill(t)}</span>'
+                         for t in tides)
+        rows.append(f'<div class="trow"><div class="tday">{esc(label)}</div>'
+                    f'<div class="tcells">{cells}</div></div>')
+    return "".join(rows) if rows else '<p class="muted">Tide predictions unavailable.</p>'
+
+
+def _render_tides(by_day: dict, curve: dict, days: int) -> str:
+    """A tide-app style chart per day: the predicted curve as a filled SVG,
+    highs and lows labelled with time and height, and a marker for right
+    now on today's chart. All days share one vertical scale."""
+    keys = [(now_local() + timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(days + 1)]
+    pts_all = [v for k in keys for _, v in curve.get(k, [])]
+    if not pts_all:
+        return _render_tides_plain(by_day, days)
+    lo, hi = min(pts_all), max(pts_all)
+    span = (hi - lo) or 1.0
+    # y as a percentage of the chart height, leaving room for the labels
+    TOP, BOT = 20.0, 82.0
+
+    def ypct(v: float) -> float:
+        return BOT - (v - lo) / span * (BOT - TOP)
+
+    def xpct(minute: int) -> float:
+        return minute / 1440 * 100
+
+    now = now_local()
+    blocks = []
+    for i, key in enumerate(keys):
+        pts = curve.get(key, [])
+        if len(pts) < 4:
+            continue
+        label = "Today" if i == 0 else (now + timedelta(days=i)).strftime("%A · %b %-d")
+        # the curve: an area under a polyline, in a 1000x1000 box stretched
+        # to fit (non-scaling stroke keeps the line crisp)
+        path = " ".join(f"{xpct(m) * 10:.0f},{ypct(v) * 10:.0f}" for m, v in pts)
+        area = (f"M0,1000 L{path} L1000,1000 Z")
+        grid = "".join(f'<line x1="{x}" y1="0" x2="{x}" y2="1000"/>'
+                       for x in (250, 500, 750))
+        svg = (f'<svg class="tsvg" viewBox="0 0 1000 1000" preserveAspectRatio="none" '
+               f'aria-hidden="true"><g class="tgrid">{grid}</g>'
+               f'<path class="tarea" d="{area}"/>'
+               f'<polyline class="tline" points="{path}"/></svg>')
+        # labels at the highs and lows
+        marks = []
+        for t in by_day.get(key, []):
+            x = xpct(t["minutes"]); y = ypct(t["ft"])
+            kind = t["type"].lower()
+            shift = "0" if x < 9 else ("-100%" if x > 91 else "-50%")
+            dy = "calc(-100% - 6px)" if kind == "high" else "6px"
+            marks.append(f'<span class="tide {kind} tmark" style="left:{x:.1f}%;'
+                         f'top:{y:.1f}%;transform:translate({shift},{dy})">'
+                         f'{_tide_pill(t)}</span>')
+        # "now" marker on today's chart
+        if i == 0:
+            m_now = now.hour * 60 + now.minute
+            before = [p for p in pts if p[0] <= m_now]
+            after = [p for p in pts if p[0] > m_now]
+            if before and after:
+                (m0, v0), (m1, v1) = before[-1], after[0]
+                v_now = v0 + (v1 - v0) * (m_now - m0) / (m1 - m0)
+                arrow = "rising" if v1 > v0 else "falling"
+                x = xpct(m_now); y = ypct(v_now)
+                marks.append(f'<span class="tnowline" style="left:{x:.1f}%"></span>'
+                             f'<span class="tnowdot" style="left:{x:.1f}%;top:{y:.1f}%"></span>'
+                             f'<span class="tnowlbl" style="left:{x:.1f}%">Now · '
+                             f'{v_now:.1f} ft {arrow}</span>')
+        axis = ('<div class="taxis"><span>12 AM</span><span>6 AM</span>'
+                '<span>Noon</span><span>6 PM</span><span>12 AM</span></div>')
+        blocks.append(f'<div class="tblock"><div class="tday">{esc(label)}</div>'
+                      f'<div class="tchart">{svg}{"".join(marks)}</div>{axis}</div>')
+    return "".join(blocks) if blocks else _render_tides_plain(by_day, days)
+
+
 def render_html(cfg: dict, data: dict) -> str:
     loc = esc(cfg["location_name"])
     generated = now_local().strftime("%A, %B %-d, %Y · %-I:%M %p ET")
@@ -1914,23 +2026,8 @@ def render_html(cfg: dict, data: dict) -> str:
     weather_html = ('<div class="wgrid">' + "".join(wcards) + "</div>"
                     if wcards else '<p class="muted">Forecast unavailable.</p>')
 
-    # --- tides table ---
-    trows = []
-    for i in range(days + 1):
-        day = (now_local() + timedelta(days=i))
-        key = day.strftime("%Y-%m-%d")
-        tides = data["tides"].get(key, [])
-        if not tides:
-            continue
-        label = "Today" if i == 0 else day.strftime("%a %b %-d")
-        cells = " ".join(
-            f'<span class="tide {t["type"].lower()}">'
-            f'{"▲" if t["type"]=="High" else "▼"} {esc(t["time"])} '
-            f'<em>{esc(t["height"])}</em></span>' for t in tides)
-        trows.append(f'<div class="trow"><div class="tday">{esc(label)}</div>'
-                     f'<div class="tcells">{cells}</div></div>')
-    tides_html = ("".join(trows) if trows
-                  else '<p class="muted">Tide predictions unavailable.</p>')
+    # --- tides: one curve per day, highs/lows labelled, "now" on today's ---
+    tides_html = _render_tides(data["tides"], data.get("tide_curve") or {}, days)
 
     shows = len(data["music"])
 
@@ -1960,7 +2057,8 @@ def render_html(cfg: dict, data: dict) -> str:
                  '<div class="cols2">'
                  + _section("#f4a11a", "☀️", "Weather", weather_html)
                  + _section("#048ba8", "🌊", "Tides", tides_html,
-                            lead="High &amp; low tides · Fernandina Beach")
+                            lead="Predicted tide curve · Fernandina Beach · "
+                                 "▲ high &amp; ▼ low with times and heights")
                  + '</div>')
         + _panel("music",
                  _section("#2f8fd4", "🎶", "Live Music This Week", music_html,
@@ -2353,6 +2451,39 @@ _CSS = """
   .tide.low{ color:#2f9e93; background:rgba(47,158,147,.15); }
   .tide em{ font-style:normal; opacity:.78; }
 
+  /* tide curve charts */
+  .tblock{ padding:10px 0 6px; border-bottom:1px solid var(--line); }
+  .tblock:last-child{ border-bottom:none; }
+  .tblock .tday{ margin-bottom:4px; }
+  .tchart{ position:relative; width:100%; aspect-ratio:3.4/1; min-height:118px;
+    border-radius:12px; overflow:visible;
+    background:linear-gradient(180deg, color-mix(in srgb,var(--accent) 5%, var(--card)), var(--card)); }
+  .tsvg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .tgrid line{ stroke:var(--line); stroke-width:1; vector-effect:non-scaling-stroke;
+    stroke-dasharray:3 4; }
+  .tarea{ fill:color-mix(in srgb,var(--accent) 18%, transparent); }
+  .tline{ fill:none; stroke:var(--accent); stroke-width:2.5; vector-effect:non-scaling-stroke;
+    stroke-linejoin:round; stroke-linecap:round; }
+  .tmark{ position:absolute; white-space:nowrap; font-size:.74rem; padding:1px 8px;
+    background:var(--card); box-shadow:0 1px 0 color-mix(in srgb,var(--accent) 25%, transparent); }
+  .tmark.high{ background:color-mix(in srgb,#22b8c4 16%, var(--card)); }
+  .tmark.low{ background:color-mix(in srgb,#2f9e93 15%, var(--card)); }
+  .tnowline{ position:absolute; top:0; bottom:0; width:0; border-left:2px dashed #e0912e;
+    transform:translateX(-1px); }
+  .tnowdot{ position:absolute; width:10px; height:10px; border-radius:50%; background:#e0912e;
+    border:2px solid #fff; box-shadow:0 0 0 2px #e0912e; transform:translate(-50%,-50%); }
+  .tnowlbl{ position:absolute; bottom:-2px; transform:translateX(-50%); white-space:nowrap;
+    font-size:.68rem; font-weight:800; color:#b86f12; background:var(--card);
+    padding:1px 7px; border-radius:999px; }
+  .taxis{ display:flex; justify-content:space-between; margin-top:3px; padding:0 2px;
+    font-size:.64rem; font-weight:700; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.04em; }
+  @media (max-width:640px){
+    .tchart{ aspect-ratio:2.4/1; }
+    .tmark{ font-size:.66rem; padding:1px 6px; }
+    .tmark em{ display:none; }   /* time only on small screens */
+  }
+
   .factcard{ display:flow-root; border-left:4px solid var(--accent); padding:2px 0 2px 14px; }
   .factimg{ float:left; width:120px; height:120px; object-fit:cover; border-radius:12px;
     border:1px solid var(--line); background:var(--line); margin:2px 14px 8px 0; }
@@ -2464,6 +2595,7 @@ def main() -> int:
         "restaurants": fetch_restaurants(cfg),
         "weather": fetch_weather(cfg),
         "tides": fetch_tides(cfg),
+        "tide_curve": fetch_tide_curve(cfg),
     }
     logging.info("Collected: %d music, %d events, %d news, %d restaurants",
                  len(music), len(events), len(data["news"]),
