@@ -107,7 +107,7 @@
       { "name": "Hammerhead Beach Bar", "cuisine": "Bar & Grill", "street": "2045 South Fletcher Avenue" },
       { "name": "Wicked Bao Restaurant", "cuisine": "Asian Fusion", "street": "North 2nd Street" },
       { "name": "Hana Sushi", "cuisine": "Sushi, Japanese", "street": "1930 South 14th Street", "url": "https://www.hanasushifl.com" },
-      { "name": "Georgia Smoke", "cuisine": "Barbecue", "street": "820 Sadler Road", "url": "https://gasmokebbq.com" },
+      { "name": "Lazy Jack's", "cuisine": "Sandwiches, Deli", "street": "302 South 8th Street", "url": "https://www.lazyjacksamelia.com" },
       { "name": "The Inkwell Art Bar", "cuisine": "Bar, Live Music", "street": "1925 South 14th Street", "url": "https://www.theinkwellamelia.com" },
       { "name": "Golf Pub Social", "cuisine": "Bar & Grill, American", "street": "1531 Sadler Road", "url": "https://golfpubsocial.com" }
     ]
