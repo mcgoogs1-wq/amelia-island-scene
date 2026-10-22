@@ -50,6 +50,12 @@ only a local preview; it doesn't change the live site.
 
 ---
 
+## Banner photos you don't like
+
+The caption under the banner (e.g. "Fort Clinch State Park, Florida, US (48)")
+is the photo's name. To retire one, add that name to `banner` → `skip` in
+`config.json` and push. It's gone from the rotation from the next rebuild.
+
 ## Add your own photos to the banner
 
 Drop landscape photos of the island into the **`photos`** folder (JPG, PNG,

@@ -150,6 +150,10 @@ DEFAULT_CONFIG = {
         # one of your photos (cycling through them); other days use Wikimedia.
         "own_photos_dir": "photos",
         "own_photos_every": 4,
+        # Wikimedia photos to never show, by the caption text shown on the
+        # site (e.g. "Fort Clinch State Park, Florida, US (48)"). Keep adding
+        # here as you spot ones you don't like.
+        "skip": [],
         # Wikimedia Commons categories — the richest source of local scenery
         "categories": [
             "Amelia Island", "Amelia Island Light", "Amelia Island State Park",
@@ -1557,9 +1561,15 @@ def _own_photos(cfg: dict, out_dir: Path) -> list[dict]:
 def _with_own_photos(cfg: dict, banners: list[dict], out_dir: Path) -> list[dict]:
     """Mix the user's photos into the banner pool, tagged with the cadence
     (banner.own_photos_every) that _daily_pick uses to give them a turn."""
-    every = max(1, int(cfg.get("banner", {}).get("own_photos_every", 4)))
+    bc = cfg.get("banner", {})
+    every = max(1, int(bc.get("own_photos_every", 4)))
     own = [{**o, "every": every} for o in _own_photos(cfg, out_dir)]
-    return list(banners) + own
+    # drop any the user has asked never to show (matched on the caption text)
+    skip = {s.strip().lower() for s in bc.get("skip", []) if s.strip()}
+    kept = [b for b in banners if (b.get("title") or "").strip().lower() not in skip]
+    if len(kept) != len(banners):
+        logging.info("Banner: skipping %d photo(s) per banner.skip", len(banners) - len(kept))
+    return kept + own
 
 
 def _banner_html(images: list[dict]) -> str:

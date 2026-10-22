@@ -15,6 +15,11 @@
   "tides": {
     "station": "8720030"
   },
+  "banner": {
+    "skip": [
+      "Fort Clinch State Park, Florida, US (48)"
+    ]
+  },
   "news": {
     "google_news": true,
     "city_newsflash": true,
