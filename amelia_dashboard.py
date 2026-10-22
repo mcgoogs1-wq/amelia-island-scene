@@ -2354,9 +2354,23 @@ _CSS = """
   @media (max-width:640px){ .tabbtn{ font-size:.8rem; padding:6px 11px; } }
 
   header.top{ position:relative; border-radius:22px; overflow:hidden; color:#fff;
-    background:linear-gradient(135deg,#0e2633 0%,#17475a 60%,#1d5866 100%);
+    background:linear-gradient(135deg,#0a2533 0%,#0f4458 55%,#146b80 100%);
     box-shadow:var(--shadow); padding:32px 30px 52px; }
   .top-inner{ position:relative; z-index:2; }
+  /* "the current": translucent streamlines drifting across deep water */
+  .current{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
+  .current svg{ display:block; width:100%; height:100%; }
+  .flow path{ fill:none; stroke:#a9ecf5; stroke-linecap:round; }
+  .flow.f1{ opacity:.19; animation:drift 34s linear infinite; }
+  .flow.f2{ opacity:.11; animation:drift 52s linear infinite; }
+  .flow.f3{ opacity:.3; animation:drift 24s linear infinite; }
+  .flow.f1 path{ stroke-width:26; filter:url(#soft); }
+  .flow.f2 path{ stroke-width:44; filter:url(#soft); }
+  .flow.f3 path{ stroke-width:2.5; }
+  .glow{ opacity:.35; animation:glowdrift 18s ease-in-out infinite alternate; }
+  @keyframes drift{ from{ transform:translateX(0); } to{ transform:translateX(-1200px); } }
+  @keyframes glowdrift{ from{ transform:translateX(-80px); } to{ transform:translateX(80px); } }
+  @media (prefers-reduced-motion: reduce){ .flow, .glow{ animation:none; } }
   header.top h1{ font-family:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     font-weight:800; margin:0; font-size:2.5rem; line-height:1.06; letter-spacing:-.022em; }
   header.top .sub{ margin-top:9px; font-weight:600; font-size:.95rem; opacity:.82;
@@ -2532,6 +2546,45 @@ _CSS = """
   footer a{ color:var(--accent); text-decoration:none; }
 """
 
+def _streamline(y: float, amp: float, phase: float = 0) -> str:
+    """One sinuous path across 2400 units (two 1200-unit repeats, so it can
+    scroll by 1200 and loop seamlessly)."""
+    seg = []
+    for rep in (0, 1200):
+        x0 = rep + phase
+        seg.append(f"M{x0:.0f},{y:.0f} "
+                   f"C{x0+200:.0f},{y-amp:.0f} {x0+400:.0f},{y+amp:.0f} {x0+600:.0f},{y:.0f} "
+                   f"S{x0+1000:.0f},{y-amp:.0f} {x0+1200:.0f},{y:.0f}")
+    return " ".join(seg)
+
+
+_CURRENT = (
+    '<div class="current" aria-hidden="true">'
+    '<svg viewBox="0 0 1200 240" preserveAspectRatio="none">'
+    '<defs><filter id="soft" x="-5%" y="-50%" width="110%" height="200%">'
+    '<feGaussianBlur stdDeviation="9"/></filter>'
+    '<radialGradient id="glowg" cx="50%" cy="50%" r="50%">'
+    '<stop offset="0" stop-color="#7fd6e6" stop-opacity=".55"/>'
+    '<stop offset="1" stop-color="#7fd6e6" stop-opacity="0"/></radialGradient></defs>'
+    '<ellipse class="glow" cx="760" cy="150" rx="520" ry="110" fill="url(#glowg)"/>'
+    # wide, soft bands: the body of the current
+    '<g class="flow f2">'
+    f'<path d="{_streamline(95, 26)}"/>'
+    f'<path d="{_streamline(175, 22, 500)}"/>'
+    '</g>'
+    '<g class="flow f1">'
+    f'<path d="{_streamline(60, 20, 300)}"/>'
+    f'<path d="{_streamline(140, 28, 800)}"/>'
+    f'<path d="{_streamline(215, 18, 150)}"/>'
+    '</g>'
+    # fine, brighter streamlines riding on top
+    '<g class="flow f3">'
+    f'<path d="{_streamline(48, 16, 900)}"/>'
+    f'<path d="{_streamline(118, 24, 250)}"/>'
+    f'<path d="{_streamline(162, 20, 650)}"/>'
+    f'<path d="{_streamline(205, 14, 50)}"/>'
+    '</g></svg></div>')
+
 _WAVE = ('<div class="wave"><svg viewBox="0 0 1200 40" preserveAspectRatio="none">'
          '<path d="M0,22 C160,42 360,4 600,22 C840,40 1040,4 1200,22 '
          'L1200,40 L0,40 Z"/></svg></div>')
@@ -2558,6 +2611,7 @@ def _html_page(loc: str, generated: str, strip_html: str, body: str,
       <div class="sub">Your week at a glance · updated {generated}</div>
       <div class="strip">{strip_html}</div>
     </div>
+    {_CURRENT}
     {_WAVE}
   </header>
   {body}
