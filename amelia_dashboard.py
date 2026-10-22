@@ -1072,6 +1072,53 @@ def fetch_weather(cfg: dict) -> dict:
     return out
 
 
+def _noaa_predictions(url: str, cfg: dict) -> list[dict]:
+    """NOAA occasionally times out or returns an error body; try three times
+    before giving up (the caller then falls back to the cached week)."""
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            body = http_get(url, cfg).json()
+            if "error" in body:
+                raise RuntimeError(body["error"].get("message", "NOAA error"))
+            return body.get("predictions", [])
+        except Exception as ex:  # noqa: BLE001
+            last = ex
+            time.sleep(2 * (attempt + 1))
+    raise last or RuntimeError("NOAA unavailable")
+
+
+_TIDE_CACHE = HERE / "data" / "tides_cache.json"
+
+
+def fetch_tide_data(cfg: dict) -> dict:
+    """Both the hi/lo list and the 30-minute curve, with a fallback: NOAA's
+    predictions for the days ahead don't change, so if either request fails
+    the last successful set is reused rather than showing nothing."""
+    days = fetch_tides(cfg)
+    curve = fetch_tide_curve(cfg)
+    if days and curve:
+        try:
+            _TIDE_CACHE.write_text(json.dumps(
+                {"built": now_local().date().isoformat(), "days": days, "curve": curve}))
+        except Exception as ex:  # noqa: BLE001
+            logging.warning("Tide cache not saved: %s", ex)
+        return {"days": days, "curve": curve}
+    try:
+        cached = json.loads(_TIDE_CACHE.read_text())
+        today = now_local().strftime("%Y-%m-%d")
+        c_days = {k: v for k, v in cached.get("days", {}).items() if k >= today}
+        c_curve = {k: [tuple(p) for p in v]
+                   for k, v in cached.get("curve", {}).items() if k >= today}
+        if c_days:
+            logging.info("Tides: NOAA unavailable; using the %s cache (%d days)",
+                         cached.get("built"), len(c_days))
+            return {"days": days or c_days, "curve": curve or c_curve}
+    except Exception:  # noqa: BLE001
+        pass
+    return {"days": days, "curve": curve}
+
+
 def fetch_tides(cfg: dict) -> dict:
     station = cfg["tides"]["station"]
     today = now_local()
@@ -1082,7 +1129,7 @@ def fetch_tides(cfg: dict) -> dict:
            f"format=json&begin_date={today:%Y%m%d}&end_date={end:%Y%m%d}")
     by_day: dict[str, list[dict]] = {}
     try:
-        preds = http_get(url, cfg).json().get("predictions", [])
+        preds = _noaa_predictions(url, cfg)
         for p in preds:
             dt = datetime.strptime(p["t"], "%Y-%m-%d %H:%M")
             day = dt.strftime("%Y-%m-%d")
@@ -1110,7 +1157,7 @@ def fetch_tide_curve(cfg: dict) -> dict[str, list[tuple[int, float]]]:
            f"format=json&begin_date={today:%Y%m%d}&end_date={end:%Y%m%d}")
     curve: dict[str, list[tuple[int, float]]] = {}
     try:
-        for p in http_get(url, cfg).json().get("predictions", []):
+        for p in _noaa_predictions(url, cfg):
             dt = datetime.strptime(p["t"], "%Y-%m-%d %H:%M")
             curve.setdefault(dt.strftime("%Y-%m-%d"), []).append(
                 (dt.hour * 60 + dt.minute, float(p["v"])))
@@ -2650,6 +2697,7 @@ def main() -> int:
     logging.info("=== Amelia dashboard run start ===")
 
     music, events = collect_events(cfg)
+    tide = fetch_tide_data(cfg)
     data = {
         "music": music,
         "events": events,
@@ -2658,8 +2706,8 @@ def main() -> int:
         "banners": fetch_banners(cfg),
         "restaurants": fetch_restaurants(cfg),
         "weather": fetch_weather(cfg),
-        "tides": fetch_tides(cfg),
-        "tide_curve": fetch_tide_curve(cfg),
+        "tides": tide["days"],
+        "tide_curve": tide["curve"],
     }
     logging.info("Collected: %d music, %d events, %d news, %d restaurants",
                  len(music), len(events), len(data["news"]),
