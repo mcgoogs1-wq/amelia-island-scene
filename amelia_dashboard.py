@@ -2360,18 +2360,18 @@ _CSS = """
   /* "the current": translucent streamlines drifting across deep water */
   .current{ position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; }
   .current svg{ display:block; width:100%; height:100%; }
-  .flow path{ fill:none; stroke:#a9ecf5; stroke-linecap:round; }
-  .flow.f1{ opacity:.19; animation:drift 34s linear infinite; }
-  .flow.f2{ opacity:.11; animation:drift 52s linear infinite; }
-  .flow.f3{ opacity:.3; animation:drift 24s linear infinite; }
+  .flow path{ fill:none; stroke:#bdf3fb; stroke-linecap:round; }
+  .flow.f1{ opacity:.34; animation:drift 22s linear infinite; }
+  .flow.f2{ opacity:.24; animation:drift 34s linear infinite; }
+  .flow.f3{ opacity:.55; animation:drift 14s linear infinite; }
   .flow.f1 path{ stroke-width:26; filter:url(#soft); }
   .flow.f2 path{ stroke-width:44; filter:url(#soft); }
-  .flow.f3 path{ stroke-width:2.5; }
-  .glow{ opacity:.35; animation:glowdrift 18s ease-in-out infinite alternate; }
+  .flow.f3 path{ stroke-width:3.5; }
+  .glow{ opacity:.5; animation:glowdrift 18s ease-in-out infinite alternate; }
   @keyframes drift{ from{ transform:translateX(0); } to{ transform:translateX(-1200px); } }
   @keyframes glowdrift{ from{ transform:translateX(-80px); } to{ transform:translateX(80px); } }
   @media (prefers-reduced-motion: reduce){ .flow, .glow{ animation:none; } }
-  header.top h1{ font-family:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  header.top h1{ font-family:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-shadow:0 2px 10px rgba(0,0,0,.35);
     font-weight:800; margin:0; font-size:2.5rem; line-height:1.06; letter-spacing:-.022em; }
   header.top .sub{ margin-top:9px; font-weight:600; font-size:.95rem; opacity:.82;
     letter-spacing:.005em; }
