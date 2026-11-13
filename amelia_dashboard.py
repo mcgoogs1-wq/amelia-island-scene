@@ -891,6 +891,7 @@ def _custom_restaurant(entry) -> dict | None:
         "street": entry.get("street", "") or "",
         "amenity": amenity,
         "url": url,
+        "yelp": (entry.get("yelp") or "").strip(),   # optional exact Yelp page
         "lat": None,
         "lon": None,
     }
@@ -2290,9 +2291,9 @@ def _render_restaurants(items: list[dict]) -> str:
         tag_html = f'<span class="rtag">{esc(tag)}</span>' if tag else ""
         meta = (f'<div class="rmeta">{esc(r["street"])}</div>'
                 if r.get("street") else "")
-        yelp = ("https://www.yelp.com/search?find_desc="
-                + quote_plus(r["name"]) + "&find_loc="
-                + quote_plus("Fernandina Beach, FL"))
+        yelp = r.get("yelp") or ("https://www.yelp.com/search?find_desc="
+                                 + quote_plus(r["name"]) + "&find_loc="
+                                 + quote_plus("Fernandina Beach, FL"))
         cards.append(
             f'<div class="rcard" data-cats="{esc(" ".join(cats))}">'
             f'<a class="rname" href="{esc(r["url"])}" target="_blank" '
