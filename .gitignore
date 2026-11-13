@@ -12,3 +12,6 @@ data/tides_cache.json
 
 # GitHub Desktop clone of the published repo (not part of this project)
 amelia-island-scene/
+
+# originals of photos that were cropped for the banner (kept local, not uploaded)
+photos/_uncropped/
